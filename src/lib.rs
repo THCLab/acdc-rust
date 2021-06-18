@@ -19,7 +19,6 @@ pub enum Error {
 
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Datum {
-    pub issuer: String,
     pub message: String,
 }
 
@@ -33,20 +32,43 @@ struct Proof {
 /// the Testator Identifier making it always globally unique.
 /// example:
 ///      did:123456789/attestation/d12345
-///          ------------                ------
-///               |                         |
-///            testator did            attestation id
+///          ------------          ------
+///               |                  |
+///            testator did      attestation id
 #[derive(Clone)]
 pub struct AttestationId {
-    testator_id: String,
+    testator_id: Identifier,
     id: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, PartialEq)]
+pub struct Identifier {
+    id: String,
+}
+
+impl Identifier {
+    pub fn new(id: &str) -> Self {
+        Identifier { id: id.into() }
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub struct ExternalSource {
+    testator_id: Identifier,
+    attestation_id: AttestationId,
+}
+
+#[derive(Serialize, Deserialize, Clone)]
+pub enum Source {
+    External(ExternalSource),
+    Internal(AttestationId),
+}
+
 impl AttestationId {
-    pub fn new(testator_id: &str, id: &str) -> Self {
+    pub fn new(testator_id: Identifier, id: &str) -> Self {
         AttestationId {
             // TODO: why we use into() here istead of clone?
-            testator_id: testator_id.into(),
+            testator_id: testator_id,
             id: id.into(),
         }
     }
@@ -74,7 +96,7 @@ impl<'de> Deserialize<'de> for AttestationId {
 
 impl fmt::Display for AttestationId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let str = [&self.testator_id, "/attestation/", &self.id].join("");
+        let str = [&self.testator_id.id, "/attestation/", &self.id].join("");
         write!(fmt, "{}", str)
     }
 }
@@ -91,9 +113,12 @@ impl FromStr for AttestationId {
             .get(2)
             .ok_or(Error::Generic("Inpropper datum id format".into()))?;
         let splitted: Vec<&str> = data.split("/").collect();
-        let testator_id = splitted
-            .get(0)
-            .ok_or(Error::Generic("Inpropper datum id format".into()))?;
+        let testator_id = Identifier {
+            id: splitted
+                .get(0)
+                .ok_or(Error::Generic("Inpropper datum id format".into()))?
+                .to_string(),
+        };
         let attestation_id = splitted
             .get(2)
             .ok_or(Error::Generic("Inpropper datum id format".into()))?
@@ -121,15 +146,15 @@ pub struct AttestationDatum {
     #[serde(rename = "i")]
     id: AttestationId,
     #[serde(rename = "t")]
-    testator_id: String,
+    testator_id: Option<Identifier>,
     #[serde(rename = "s")]
-    sources: Vec<AttestationId>,
+    sources: Vec<Source>,
     #[serde(rename = "x")]
-    schema: ObjectType,
+    schema: Option<ObjectType>,
     #[serde(rename = "d")]
     datum: Datum,
     #[serde(rename = "r")]
-    rules: ObjectType,
+    rules: Option<ObjectType>,
 }
 
 impl AttestationDatum {
@@ -145,17 +170,16 @@ impl AttestationDatum {
     //    }
 
     pub fn new(
-        attestation_id: &str,
-        testator_id: &str,
-        sources: Vec<AttestationId>,
+        attestation_id: AttestationId,
+        testator_id: Option<Identifier>,
+        sources: Vec<Source>,
         schema: ObjectType,
-        datum: Datum,
-        rules: ObjectType,
+        datum: ObjectType,
+        rules: Option<ObjectType>,
     ) -> Self {
-        let id = AttestationId::new(testator_id, attestation_id);
         AttestationDatum {
-            id,
-            testator_id: testator_id.to_string(),
+            id: attestation_id,
+            testator_id: testator_id,
             sources,
             schema,
             datum,
@@ -199,7 +223,7 @@ impl SignedAttestationDatum {
             .map_err(|e| Error::Decode64Error(e))
     }
 
-    pub fn get_issuer(&self) -> Result<String, Error> {
+    pub fn get_issuer(&self) -> Result<Identifier, Error> {
         Ok(self.at_datum.datum.issuer.clone())
     }
 
@@ -226,19 +250,21 @@ impl SignedAttestationDatum {
 
 #[test]
 pub fn test_attestation_id_serialization() -> Result<(), Error> {
-    let testator_id = "D5bw5KrpU2xRc3Oi4rsyBK9By6aotmXU0fNEybJbja1Q";
+    let testator_id = Identifier {
+        id: "D5bw5KrpU2xRc3Oi4rsyBK9By6aotmXU0fNEybJbja1Q".into(),
+    };
     let msg_str = "hi there";
     let datum = Datum {
         message: msg_str.into(),
-        issuer: testator_id.into(),
+        issuer: testator_id.clone(),
     };
     let ad = AttestationDatum::new(
-        "123",
-        "123",
+        AttestationId::new(testator_id, "123".into()),
+        Some(Identifier { id: "123".into() }),
         vec![],
-        ObjectType::SAI("123".to_string()),
+        Some(ObjectType::SAI("123".to_string())),
         datum,
-        ObjectType::SAI("4124".to_string()),
+        Some(ObjectType::SAI("4124".to_string())),
     );
     let id = ad.id;
 
@@ -246,7 +272,7 @@ pub fn test_attestation_id_serialization() -> Result<(), Error> {
     assert_eq!(ser_id, "\"did:keri:D5bw5KrpU2xRc3Oi4rsyBK9By6aotmXU0fNEybJbja1Q/attestationId/jabUza-EpwNOQGALxFtFiMjC6PYdxlJqQtsI9E24uiI=\"");
 
     let deser_id = AttestationId::from_str(&ser_id).unwrap();
-    assert_eq!(deser_id.testator_id, id.testator_id);
+    assert_eq!(deser_id.testator_id.id, id.testator_id.id);
     assert_eq!(deser_id.id, id.id);
 
     Ok(())
