@@ -10,7 +10,7 @@ pub mod source;
 use crate::error::Error;
 use crate::source::{ExternalSource, Source};
 use crate::{
-    attestation::AttestationDatum,
+    attestation::Attestation,
     attestation::{AttestationId, ObjectType},
     datum::Message,
     identifier::{BasicIdentifier, Identifier},
@@ -26,7 +26,7 @@ pub fn test_attestation_id_serialization() -> Result<(), Error> {
     let datum = Message {
         message: msg_str.into(),
     };
-    let ad = AttestationDatum::new(
+    let ad = Attestation::new(
         AttestationId::new(testator_id, "123".into()),
         Some(Identifier::Basic(BasicIdentifier { id: "123".into() })),
         vec![],
@@ -48,9 +48,9 @@ pub fn test_attestation_id_serialization() -> Result<(), Error> {
 
 #[test]
 pub fn test_signed_datum_serialization() -> Result<(), Error> {
-    use crate::signed_attestation::SignedAttestationDatum;
-    let sd_str = r#"{"AttestationDatumId":"did:keri:DoQa-mkiBs5kDaSjbONUpryZKAJ4zGFn9EMHJPXykDA0/attestationId/vPjipY4kdlyt9e-p5SM7N_X6DQQD2VEuIfF9Wnrx3w4=","AttestedDatumSources":["did:keri:DoQa-mkiBs5kDaSjbONUpryZKAJ4zGFn9EMHJPXykDA0/attestationId/sourceID"],"Datum":{"issuer":"DoQa-mkiBs5kDaSjbONUpryZKAJ4zGFn9EMHJPXykDA0","message":"Some vc"},"proof":{"signature":"byfYjUug5s0fgwhQuzX4C03G6BwWYi7BMrd-ZoJC8AAuDEYg8duM1iNFn6_ZaTwlAW1QrMWbpGO9_hBvSAF4DQ=="}}"#;
-    let sd = SignedAttestationDatum::deserialize(sd_str)?;
+    use crate::signed_attestation::SignedAttestation;
+    let sd_str = r#"{"AttestationId":"did:keri:DoQa-mkiBs5kDaSjbONUpryZKAJ4zGFn9EMHJPXykDA0/attestationId/vPjipY4kdlyt9e-p5SM7N_X6DQQD2VEuIfF9Wnrx3w4=","AttestedDatumSources":["did:keri:DoQa-mkiBs5kDaSjbONUpryZKAJ4zGFn9EMHJPXykDA0/attestationId/sourceID"],"Datum":{"issuer":"DoQa-mkiBs5kDaSjbONUpryZKAJ4zGFn9EMHJPXykDA0","message":"Some vc"},"proof":{"signature":"byfYjUug5s0fgwhQuzX4C03G6BwWYi7BMrd-ZoJC8AAuDEYg8duM1iNFn6_ZaTwlAW1QrMWbpGO9_hBvSAF4DQ=="}}"#;
+    let sd = SignedAttestation::deserialize(sd_str)?;
     assert_eq!(sd.serialize().unwrap(), sd_str);
 
     Ok(())

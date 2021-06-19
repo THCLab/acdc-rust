@@ -116,13 +116,13 @@ pub struct AttestationDatum<D: Datum> {
     pub rules: Option<ObjectType>,
 }
 
-impl<D: Datum + Clone> AttestationDatum<D> {
-    //    pub fn attach_signature(&self, signature: Vec<u8>) -> Result<SignedAttestationDatum, Error> {
+impl<D: Datum + Clone> Attestation<D> {
+    //    pub fn attach_signature(&self, signature: Vec<u8>) -> Result<SignedAttestation, Error> {
     //        let b64_signature = base64::encode_config(signature, URL_SAFE);
     //        let proof = Proof {
     //            signature: b64_signature,
     //        };
-    //        Ok(SignedAttestationDatum {
+    //        Ok(SignedAttestation {
     //            at_datum: self.clone(),
     //            proof,
     //        })
@@ -136,7 +136,7 @@ impl<D: Datum + Clone> AttestationDatum<D> {
         datum: D,
         rules: Option<ObjectType>,
     ) -> Self {
-        AttestationDatum {
+        Attestation {
             id: attestation_id,
             testator_id: testator_id,
             sources,
