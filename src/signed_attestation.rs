@@ -15,13 +15,13 @@ struct Proof {
 }
 
 #[derive(Serialize, Deserialize)]
-pub struct SignedAttestation<D: Datum> {
+pub struct SignedAttestation<S, D: Datum, R> {
     #[serde(flatten)]
-    at_datum: Attestation<D>,
+    at_datum: Attestation<S, D, R>,
     proof: Proof,
 }
 
-impl fmt::Display for SignedAttestation<Message> {
+impl fmt::Display for SignedAttestation<String, Message, String> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let ad_str = serde_json::to_string(&self.at_datum).unwrap();
         let s = &ad_str[1..ad_str.len() - 1];
@@ -35,7 +35,7 @@ impl fmt::Display for SignedAttestation<Message> {
     }
 }
 
-impl SignedAttestation<Message> {
+impl SignedAttestation<String, Message, String> {
     pub fn get_signature(&self) -> Result<Vec<u8>, Error> {
         base64::decode_config(self.proof.signature.clone(), URL_SAFE)
             .map_err(|e| Error::Decode64Error(e))
@@ -57,7 +57,7 @@ impl SignedAttestation<Message> {
         serde_json::to_string(&self).map_err(|e| Error::Generic(e.to_string()))
     }
 
-    pub fn deserialize(msg: &str) -> Result<SignedAttestation<Message>, Error> {
+    pub fn deserialize(msg: &str) -> Result<SignedAttestation<String, Message, String>, Error> {
         serde_json::from_str(msg).map_err(|e| Error::Generic(e.to_string()))
     }
 }

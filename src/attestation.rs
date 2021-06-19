@@ -101,7 +101,7 @@ impl FromStr for AttestationId {
 }
 
 #[derive(Serialize, Deserialize, Clone)]
-pub struct AttestationDatum<D: Datum> {
+pub struct Attestation<S, D, R> {
     #[serde(rename = "i")]
     pub id: AttestationId,
     #[serde(rename = "t")]
@@ -109,14 +109,14 @@ pub struct AttestationDatum<D: Datum> {
     #[serde(rename = "s")]
     pub sources: Vec<Source>,
     #[serde(rename = "x")]
-    pub schema: ObjectType,
+    pub schema: S,
     #[serde(rename = "d")]
     pub datum: D,
     #[serde(rename = "r")]
-    pub rules: Option<ObjectType>,
+    pub rules: Option<R>,
 }
 
-impl<D: Datum + Clone> Attestation<D> {
+impl<S, D: Datum + Clone, R> Attestation<S, D, R> {
     //    pub fn attach_signature(&self, signature: Vec<u8>) -> Result<SignedAttestation, Error> {
     //        let b64_signature = base64::encode_config(signature, URL_SAFE);
     //        let proof = Proof {
@@ -132,9 +132,9 @@ impl<D: Datum + Clone> Attestation<D> {
         attestation_id: AttestationId,
         testator_id: Option<Identifier>,
         sources: Vec<Source>,
-        schema: ObjectType,
+        schema: S,
         datum: D,
-        rules: Option<ObjectType>,
+        rules: Option<R>,
     ) -> Self {
         Attestation {
             id: attestation_id,
