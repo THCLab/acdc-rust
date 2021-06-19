@@ -132,7 +132,7 @@ impl<D: Datum + Clone> Attestation<D> {
         attestation_id: AttestationId,
         testator_id: Option<Identifier>,
         sources: Vec<Source>,
-        schema: Option<ObjectType>,
+        schema: ObjectType,
         datum: D,
         rules: Option<ObjectType>,
     ) -> Self {

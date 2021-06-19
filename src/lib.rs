@@ -30,7 +30,7 @@ pub fn test_attestation_id_serialization() -> Result<(), Error> {
         AttestationId::new(testator_id, "123".into()),
         Some(Identifier::Basic(BasicIdentifier { id: "123".into() })),
         vec![],
-        Some(ObjectType::SAI("123".to_string())),
+        ObjectType::SAI("123".to_string()),
         datum,
         Some(ObjectType::SAI("4124".to_string())),
     );
