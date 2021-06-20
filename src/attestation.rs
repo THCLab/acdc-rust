@@ -17,6 +17,7 @@ use uriparse::URI;
 /// TODO
 
 #[derive(Serialize, Deserialize, Clone)]
+#[serde(untagged)]
 pub enum ObjectType {
     // TODO replace it with SAI model
     SAI(String),
@@ -105,14 +106,16 @@ impl FromStr for AttestationId {
 pub struct Attestation<S, D, R> {
     #[serde(rename = "i")]
     pub id: AttestationId,
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "t")]
     pub testator_id: Option<Identifier>,
     #[serde(rename = "s")]
-    pub sources: Vec<Source>,
+    pub sources: Vec<AttestationId>,
     #[serde(rename = "x")]
     pub schema: S,
     #[serde(rename = "d")]
     pub datum: D,
+    #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "r")]
     pub rules: Option<R>,
 }
@@ -132,7 +135,7 @@ impl<S, D: Datum + Clone, R> Attestation<S, D, R> {
     pub fn new(
         attestation_id: AttestationId,
         testator_id: Option<Identifier>,
-        sources: Vec<Source>,
+        sources: Vec<AttestationId>,
         schema: S,
         datum: D,
         rules: Option<R>,
