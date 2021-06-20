@@ -6,8 +6,9 @@ use crate::{
     datum::Datum,
     error::Error,
     identifier::{BasicIdentifier, Identifier},
-    source::Source,
 };
+use std::convert::TryFrom;
+use uriparse::URI;
 
 /// ObjectType is an enum which allows to deal with different object types in the attestation. Any
 /// object which can be either object `{}` or SAI (Self-Addressing Identifier) should be using this
@@ -68,7 +69,7 @@ impl<'de> Deserialize<'de> for AttestationId {
 
 impl fmt::Display for AttestationId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let str = [&self.testator_id.get_id(), "/attestation/", &self.id].join("");
+        let str = [&self.testator_id.get_id(), "/", &self.id].join("");
         write!(fmt, "{}", str)
     }
 }
@@ -79,24 +80,24 @@ impl FromStr for AttestationId {
     // TODO replace that with generic did parser
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let s = s.replace("\"", "");
-        let splietted_data: Vec<&str> = s.split(':').collect();
-        let data = splietted_data
-            .get(2)
-            .ok_or(Error::Generic("Inpropper datum id format".into()))?;
-        let splitted: Vec<&str> = data.split("/").collect();
+        let uri = URI::try_from(s).unwrap();
+        let attestation_id = uri.path().to_string();
+        // In our case the path is the full attestation id, where authority should be
+        // testator id. Unfortunetally did spec does it wrong and URI cannot parse the authority
+        // instead of did:1231e1212 should be did://123e1212/ so authority can be extracted
+        // properly
+        // TODO find out how to solve it. Already reported to did-core
+        // For time being we just take the first method-specific-id by spliting string with path
+        // char '/'
+        let splietted_data: Vec<&str> = s.split('/').collect();
+        let (scheme, authority, path, query, fragment) = uri.into_parts();
         let testator_id = Identifier::Basic(BasicIdentifier {
-            id: splitted
+            id: splietted_data
                 .get(0)
-                .ok_or(Error::Generic("Inpropper datum id format".into()))?
+                .ok_or(Error::Generic("Invalid authority in identifier".into()))?
                 .to_string(),
         });
-        let attestation_id = splitted
-            .get(2)
-            .ok_or(Error::Generic("Inpropper datum id format".into()))?
-            .to_owned();
-
-        Ok(AttestationId::new(testator_id, attestation_id))
+        Ok(AttestationId::new(testator_id, &attestation_id))
     }
 }
 
