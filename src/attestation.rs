@@ -41,7 +41,6 @@ pub struct AttestationId {
 impl AttestationId {
     pub fn new(testator_id: Identifier, id: &str) -> Self {
         AttestationId {
-            // TODO: why we use into() here istead of clone?
             testator_id: testator_id,
             id: id.into(),
         }
@@ -70,7 +69,7 @@ impl<'de> Deserialize<'de> for AttestationId {
 
 impl fmt::Display for AttestationId {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        let str = [&self.testator_id.get_id(), "/", &self.id].join("");
+        let str = &self.id;
         write!(fmt, "{}", str)
     }
 }
@@ -98,7 +97,7 @@ impl FromStr for AttestationId {
                 .ok_or(Error::Generic("Invalid authority in identifier".into()))?
                 .to_string(),
         });
-        Ok(AttestationId::new(testator_id, &attestation_id))
+        Ok(AttestationId::new(testator_id, s))
     }
 }
 
