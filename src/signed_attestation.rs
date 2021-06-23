@@ -1,11 +1,11 @@
-use std::{convert::TryInto, fmt, str::FromStr};
+use std::{collections::HashMap, convert::TryInto, fmt, str::FromStr};
 
 use base64::URL_SAFE;
 use ed25519_dalek::{PublicKey, Signature, Verifier};
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    attestation::Attestation,
+    attestation::{Attestation, AttestationId},
     datum::{Datum, Message},
     error::Error,
 };
@@ -17,8 +17,11 @@ pub struct Proof {
 }
 impl Proof {
     pub fn new(key_type: KeyType, signature: &[u8]) -> Self {
-        Self { key_type, signature: signature.to_vec() }
-    } 
+        Self {
+            key_type,
+            signature: signature.to_vec(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -74,38 +77,73 @@ impl FromStr for SignedAttestation<String, Message, String> {
 
 impl<S: Serialize, D: Datum + Serialize, R: Serialize> SignedAttestation<S, D, R> {
     pub fn new(at_datum: Attestation<S, D, R>, proof: Proof) -> Self {
-        SignedAttestation {
-            at_datum,
-            proof,
-        }
+        SignedAttestation { at_datum, proof }
     }
 
+    pub fn get_id(&self) -> AttestationId {
+        self.at_datum.id.clone()
+    }
+
+    /// Verify signed Attestation
+    ///
+    /// To verify Attestation we need to provide all SignedAttestaions
+    /// corresponding to AttestationId in sources and public keys corresponding
+    /// to their testators.
+    /// Arguments: 
+    ///     sources: vector of SignedAttestations corresponding to AttestaionIds in sources
+    ///     keys: dict with testator id as key and his public key vec as value
     pub fn verify(
         &self,
-        pk: &[u8],
-        sources: &[Attestation<String, Message, String>],
+        sources: &[SignedAttestation<String, Message, String>],
+        keys: &HashMap<String, Vec<u8>>,
     ) -> Result<bool, Error> {
-        // TODO Verify sources.
-        match self.proof.key_type {
-            KeyType::Ed25519 => {
-                let signature = {
-                    Signature::new(
-                        self.proof
-                            .signature
-                            .clone()
-                            .try_into()
-                            .map_err(|e| Error::Generic("Improper signature vec".into()))?,
-                    )
-                };
-                let key = PublicKey::from_bytes(pk)
-                    .map_err(|e| Error::Generic("Improper public key vec".into()))?;
-                Ok(key
-                    .verify(&serde_json::to_vec(&self.at_datum).unwrap(), &signature)
-                    .is_ok())
+        if self.at_datum.sources.is_empty() {
+            match self.proof.key_type {
+                KeyType::Ed25519 => {
+                    let signature =
+                        {
+                            Signature::new(
+                                self.proof.signature.clone().try_into().map_err(|_e| {
+                                    Error::Generic("Improper signature vec".into())
+                                })?,
+                            )
+                        };
+                    let pk = keys.get(&self.at_datum.id.testator_id.get_id()).unwrap();
+                    let key = PublicKey::from_bytes(pk)
+                        .map_err(|_e| Error::Generic("Improper public key vec".into()))?;
+                    return Ok(key
+                        .verify(
+                            &serde_json::to_vec(&self.at_datum).map_err(|e| {
+                                Error::Generic(format!(
+                                    "AttestationDatum serialization error: {}",
+                                    e.to_string()
+                                ))
+                            })?,
+                            &signature,
+                        )
+                        .is_ok());
+                }
+                _ => {
+                    // Not suported key type.
+                    todo!()
+                }
             }
-            _ => {
-                todo!()
-            }
+        } else {
+            let source = self
+                .at_datum
+                .sources
+                .clone()
+                .into_iter()
+                .map(|source| {
+                    let s = sources.into_iter().find(|sad| sad.at_datum.id == source);
+                    match s {
+                        Some(s) => s.verify(sources, keys),
+                        None => Err(Error::Generic("Missing attestation".into())),
+                    }
+                })
+                .all(|x| x.is_ok());
+
+            return Ok(source);
         }
     }
 }

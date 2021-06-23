@@ -32,7 +32,7 @@ pub enum ObjectType {
 ///          ------------          ------
 ///               |                  |
 ///            testator did      attestation id
-#[derive(Clone)]
+#[derive(Clone, PartialEq)]
 pub struct AttestationId {
     pub testator_id: Identifier,
     pub id: String,
