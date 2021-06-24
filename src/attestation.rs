@@ -2,11 +2,7 @@ use std::{fmt, str::FromStr};
 
 use serde::{de, Deserialize, Serialize, Serializer};
 
-use crate::{
-    datum::Datum,
-    error::Error,
-    identifier::{BasicIdentifier, Identifier},
-};
+use crate::{datum::{Datum, Message}, error::Error, identifier::{BasicIdentifier, Identifier}};
 use std::convert::TryFrom;
 use uriparse::URI;
 
@@ -117,6 +113,38 @@ pub struct Attestation<S, D, R> {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[serde(rename = "r")]
     pub rules: Option<R>,
+}
+
+impl fmt::Display for Attestation<String, Message, String> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let testator_output = if let Some(_) = &self.testator_id {
+            format!{
+                "\"t\": {},",
+                serde_json::to_string(&self.testator_id).unwrap(),
+            }
+        } else {
+            "".to_string()
+        };
+        let rules_output = if let Some(_) = &self.rules {
+            format!{
+                ", \"r\": {}",
+                serde_json::to_string(&self.rules).unwrap(),
+            }
+        } else {
+            "".to_string()
+        };
+        let output = format!(
+            "{{\"i\":{},{}\"s\":{},\"x\":{},\"d\":{}{}}}",
+            serde_json::to_string(&self.id).unwrap(),
+            testator_output,
+            serde_json::to_string(&self.sources).unwrap(),
+            serde_json::to_string(&self.schema).unwrap(),
+            self.datum.message,
+            rules_output,
+        );
+
+        write!(f, "{}", output)
+    }
 }
 
 impl<S, D: Datum + Clone, R> Attestation<S, D, R> {

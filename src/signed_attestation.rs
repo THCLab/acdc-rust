@@ -3,6 +3,7 @@ use std::{collections::HashMap, convert::TryInto, fmt, str::FromStr};
 use base64::URL_SAFE;
 use ed25519_dalek::{PublicKey, Signature, Verifier};
 use serde::{Deserialize, Serialize};
+use serde::Serializer;
 
 use crate::{
     attestation::{Attestation, AttestationId},
@@ -36,21 +37,19 @@ pub struct SignedAttestation<S, D: Datum + Serialize, R> {
     proof: Proof,
 }
 
-impl fmt::Display for SignedAttestation<String, Message, String> {
+impl<D: Datum + Serialize> fmt::Display for SignedAttestation<String, D, String> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let ad_str = serde_json::to_string(&self.at_datum).unwrap();
-        let s = &ad_str[1..ad_str.len() - 1];
-
+        let ad_str = &serde_json::to_string(&self.at_datum).unwrap();
         write!(
             f,
-            "{{{}}}--{}",
-            s,
+            "{}--{}",
+            ad_str,
             base64::encode_config(&self.proof.signature, URL_SAFE)
         )
     }
 }
 
-impl FromStr for SignedAttestation<String, Message, String> {
+impl<'de> FromStr for SignedAttestation<String, Message, String> {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
