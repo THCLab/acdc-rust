@@ -75,13 +75,30 @@ impl FromStr for SignedAttestation<String, Message, String> {
     }
 }
 
-impl<S: Serialize, D: Datum + Serialize, R: Serialize> SignedAttestation<S, D, R> {
+impl<S: Serialize + Clone, D: Datum + Serialize + Clone, R: Serialize> SignedAttestation<S, D, R> {
     pub fn new(at_datum: Attestation<S, D, R>, proof: Proof) -> Self {
         SignedAttestation { at_datum, proof }
     }
 
     pub fn get_id(&self) -> AttestationId {
         self.at_datum.id.clone()
+    }
+
+    pub fn get_attestation_datum(&self) -> &Attestation<S, D, R> {
+        &self.at_datum
+    }
+
+    pub fn get_signature(&self) -> Result<Vec<u8>, Error> {
+        Ok(self.proof.signature.clone())
+    }
+
+    pub fn get_schema(&self) -> Result<S, Error> {
+        Ok(self.at_datum.schema.clone())
+    }
+
+    pub fn get_datum(&self) -> Result<String, Error> {
+        serde_json::to_string(&self.at_datum.datum)
+            .map_err(|e| Error::Generic("Datum serialization error".into()))
     }
 
     /// Verify signed Attestation
