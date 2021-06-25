@@ -95,9 +95,8 @@ impl<S: Serialize + Clone, D: Datum + Serialize + Clone, R: Serialize> SignedAtt
         Ok(self.at_datum.schema.clone())
     }
 
-    pub fn get_datum(&self) -> Result<String, Error> {
-        serde_json::to_string(&self.at_datum.datum)
-            .map_err(|e| Error::Generic("Datum serialization error".into()))
+    pub fn get_datum(&self) -> Result<D, Error> {
+        Ok(self.at_datum.datum.clone())
     }
 
     /// Verify signed Attestation

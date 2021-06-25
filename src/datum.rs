@@ -1,4 +1,6 @@
 //! Datum - a piece of information, instance of specific data
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 pub trait Datum {}
 
@@ -10,6 +12,12 @@ pub struct Message {
 impl Message {
     pub fn new(msg: &str) -> Self {
         Self {message: msg.to_string()}
+    }
+}
+
+impl fmt::Display for Message {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", self.message)
     }
 }
 
