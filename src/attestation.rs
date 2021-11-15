@@ -1,23 +1,42 @@
-use std::{fmt, str::FromStr};
+use std::{collections::HashMap, convert::TryFrom, fmt, str::FromStr};
 
 use serde::{de, Deserialize, Serialize, Serializer};
-
-use crate::{datum::{Datum, Message}, error::Error, identifier::{BasicIdentifier, Identifier}};
-use std::convert::TryFrom;
 use uriparse::URI;
 
-/// ObjectType is an enum which allows to deal with different object types in the attestation. Any
-/// object which can be either object `{}` or SAI (Self-Addressing Identifier) should be using this
-/// enum.
+use crate::{
+    error::Error,
+    identifier::{BasicIdentifier, Identifier},
+};
 
-/// TODO
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Attestation {
+    /// Version string of ACDC.
+    #[serde(rename = "v")]
+    pub version: String,
 
-#[derive(Serialize, Deserialize, Clone)]
-#[serde(untagged)]
-pub enum ObjectType {
-    // TODO replace it with SAI model
-    SAI(String),
-    OBJECT,
+    /// SAID of ACDC.
+    #[serde(rename = "d")]
+    pub digest: String,
+
+    /// Attributable source identifier (Issuer, Testator).
+    #[serde(rename = "i")]
+    pub issuer: String,
+
+    /// Schema SAID.
+    #[serde(rename = "s")]
+    pub schema: String,
+
+    /// Attributes.
+    #[serde(rename = "a")]
+    pub attrs: HashMap<String, serde_json::Value>,
+
+    /// Provenance chain.
+    #[serde(rename = "p")]
+    pub prov_chain: Vec<serde_json::Value>,
+
+    /// Rules rules/delegation/consent/license/data agreement under which data are shared.
+    #[serde(rename = "r")]
+    pub rules: Vec<serde_json::Value>,
 }
 
 /// AttestationId - identifier, which can be designated by Testator
@@ -37,7 +56,7 @@ pub struct AttestationId {
 impl AttestationId {
     pub fn new(testator_id: Identifier, id: &str) -> Self {
         AttestationId {
-            testator_id: testator_id,
+            testator_id,
             id: id.into(),
         }
     }
@@ -74,114 +93,24 @@ impl FromStr for AttestationId {
     type Err = Error;
 
     // TODO replace that with generic did parser
-
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let uri = URI::try_from(s).unwrap();
-        let attestation_id = uri.path().to_string();
+        let _attestation_id = uri.path().to_string();
         // In our case the path is the full attestation id, where authority should be
-        // testator id. Unfortunetally did spec does it wrong and URI cannot parse the authority
+        // testator id. Unfortunately did spec does it wrong and URI cannot parse the authority
         // instead of did:1231e1212 should be did://123e1212/ so authority can be extracted
         // properly
         // TODO find out how to solve it. Already reported to did-core
-        // For time being we just take the first method-specific-id by spliting string with path
+        // For time being we just take the first method-specific-id by splitting string with path
         // char '/'
-        let splietted_data: Vec<&str> = s.split('/').collect();
-        let (scheme, authority, path, query, fragment) = uri.into_parts();
+        let split_data: Vec<&str> = s.split('/').collect();
+        let (_scheme, _authority, _path, _query, _fragment) = uri.into_parts();
         let testator_id = Identifier::Basic(BasicIdentifier {
-            id: splietted_data
+            id: split_data
                 .get(0)
-                .ok_or(Error::Generic("Invalid authority in identifier".into()))?
+                .ok_or_else(|| Error::Generic("Invalid authority in identifier".into()))?
                 .to_string(),
         });
         Ok(AttestationId::new(testator_id, s))
-    }
-}
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct Attestation<S, D, R> {
-    #[serde(rename = "i")]
-    pub id: AttestationId,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "t")]
-    pub testator_id: Option<Identifier>,
-    #[serde(rename = "s")]
-    pub sources: Vec<AttestationId>,
-    #[serde(rename = "x")]
-    pub schema: S,
-    #[serde(rename = "d")]
-    pub datum: D,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    #[serde(rename = "r")]
-    pub rules: Option<R>,
-}
-
-impl fmt::Display for Attestation<String, Message, String> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let testator_output = if let Some(_) = &self.testator_id {
-            format!{
-                "\"t\": {},",
-                serde_json::to_string(&self.testator_id).unwrap(),
-            }
-        } else {
-            "".to_string()
-        };
-        let rules_output = if let Some(_) = &self.rules {
-            format!{
-                ", \"r\": {}",
-                serde_json::to_string(&self.rules).unwrap(),
-            }
-        } else {
-            "".to_string()
-        };
-        let output = format!(
-            "{{\"i\":{},{}\"s\":{},\"x\":{},\"d\":{}{}}}",
-            serde_json::to_string(&self.id).unwrap(),
-            testator_output,
-            serde_json::to_string(&self.sources).unwrap(),
-            serde_json::to_string(&self.schema).unwrap(),
-            self.datum.message,
-            rules_output,
-        );
-
-        write!(f, "{}", output)
-    }
-}
-
-impl<S, D: Datum + Clone, R> Attestation<S, D, R> {
-    //    pub fn attach_signature(&self, signature: Vec<u8>) -> Result<SignedAttestation, Error> {
-    //        let b64_signature = base64::encode_config(signature, URL_SAFE);
-    //        let proof = Proof {
-    //            signature: b64_signature,
-    //        };
-    //        Ok(SignedAttestation {
-    //            at_datum: self.clone(),
-    //            proof,
-    //        })
-    //    }
-
-    pub fn new(
-        attestation_id: AttestationId,
-        testator_id: Option<Identifier>,
-        sources: Vec<AttestationId>,
-        schema: S,
-        datum: D,
-        rules: Option<R>,
-    ) -> Self {
-        Attestation {
-            id: attestation_id,
-            testator_id: testator_id,
-            sources,
-            schema,
-            datum,
-            rules,
-        }
-    }
-
-    pub fn get_datum(&self) -> D {
-        self.datum.clone()
-    }
-
-    pub fn get_id(&self) -> AttestationId {
-        self.id.clone()
     }
 }
