@@ -2,34 +2,29 @@
 
 use std::{collections::HashMap, convert::TryInto};
 
-use serde_json::json;
+use ed25519_dalek::{Keypair, Signer};
+use rand::rngs::OsRng;
 
-use crate::{signed, Attestation};
+use crate::{Attestation, SignedAttestation};
 
 #[test]
 fn attest_ser_deser() {
-    let attest = signed::Signed {
-        data: Attestation {
-            version: "ACDC10JSON00011c_".into(),
-            digest: "EBdXt3gIXOf2BBWNHdSXCJnFJL5OuQPyM5K0neuniccM".into(),
-            issuer: "did:keri:EmkPreYpZfFk66jpf3uFv7vklXKhzBrAqjsKAn2EDIPM".into(),
-            schema: "E46jrVPTzlSkUPqGGeIZ8a8FWS7a6s4reAXRZOkogZ2A".into(),
-            attrs: {
-                let mut map = HashMap::new();
-                map.insert("dt".into(), json!("2021-06-09T17:35:54.169967+00:00"));
-                map
-            },
-            prov_chain: vec![],
-            rules: vec![],
-        },
-        sig: signed::Signature::Ed25519(
-            base64::decode("+LsV0MWSqowHYQ+Hg5yvR6GIb6mPQ4orQ4tPRMNCcnEkYCtZELqicA216bucHOlP5m0dZorojkZY+tgLD3v6DA==")
-                .unwrap()
-                .as_slice()
-                .try_into()
-                .unwrap(),
-        ),
-    };
+    let mut attest = Attestation::new(
+        "did:keri:EmkPreYpZfFk66jpf3uFv7vklXKhzBrAqjsKAn2EDIPM",
+        "E46jrVPTzlSkUPqGGeIZ8a8FWS7a6s4reAXRZOkogZ2A",
+    );
+    attest.attrs.insert(
+        "dt".to_string(),
+        "2021-06-09T17:35:54.169967+00:00".to_string(),
+    );
+    let sig = base64::decode(
+        "+LsV0MWSqowHYQ+Hg5yvR6GIb6mPQ4orQ4tPRMNCcnEkYCtZELqicA216bucHOlP5m0dZorojkZY+tgLD3v6DA==",
+    )
+    .unwrap()
+    .as_slice()
+    .try_into()
+    .unwrap();
+    let attest = SignedAttestation::new_with_ed25519(attest, sig).unwrap();
 
     let attest_str = attest.serialize();
 
@@ -49,7 +44,31 @@ fn attest_ser_deser() {
         )
     );
 
-    let attest2 = signed::Signed::<Attestation>::deserialize(&attest_str).unwrap();
+    let attest2 = SignedAttestation::deserialize(&attest_str).unwrap();
 
     assert_eq!(attest, attest2);
+}
+
+#[test]
+fn attest_sign_verify() {
+    let mut attest = Attestation::new(
+        "did:keri:EQzFVaMasUf4cZZBKA0pUbRc9T8yUXRFLyM1JDASYqAA",
+        "EBdXt3gIXOf2BBWNHdSXCJnFJL5OuQPyM5K0neuniccM",
+    );
+    attest.attrs.insert(
+        "dt".to_string(),
+        "2021-06-09T17:35:54.169967+00:00".to_string(),
+    );
+
+    let mut rng = OsRng {};
+    let keypair = Keypair::generate(&mut rng);
+    let sig = keypair.sign(attest.to_string().as_bytes());
+    let attest = SignedAttestation::new_with_ed25519(attest, &sig.to_bytes()).unwrap();
+
+    let oracle = HashMap::new();
+    oracle.insert(
+        "did:keri:EQzFVaMasUf4cZZBKA0pUbRc9T8yUXRFLyM1JDASYqAA".to_string(),
+        keypair.public.to_bytes().to_vec(),
+    );
+    attest.verify(oracle).unwrap();
 }

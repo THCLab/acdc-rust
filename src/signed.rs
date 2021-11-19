@@ -1,67 +1,63 @@
-use std::{convert::TryInto, str::FromStr};
+use std::{collections::HashMap, convert::TryInto};
 
-use serde::{Deserialize, Serialize};
+use crate::Attestation;
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Signed<T> {
-    pub data: T,
-    pub sig: Signature,
+pub struct SignedAttestation {
+    pub attest: Attestation,
+    pub sig: ed25519_dalek::Signature,
 }
 
-impl<'a, T: Serialize + Deserialize<'a>> Signed<T> {
-    pub fn serialize(&self) -> String {
-        let json = serde_json::to_string(&self.data).unwrap();
-        let sig = self.sig.to_string();
-        format!("{}-{}", json, sig)
+impl SignedAttestation {
+    pub fn new_with_ed25519(
+        attest: Attestation,
+        sig: &[u8],
+    ) -> Result<Self, ed25519_dalek::ed25519::Error> {
+        use std::convert::TryFrom;
+        let sig = ed25519_dalek::Signature::try_from(sig)?;
+        Ok(Self { attest, sig })
     }
 
-    pub fn deserialize(s: &'a str) -> Result<Signed<T>, Error> {
+    pub fn serialize(&self) -> String {
+        let json = serde_json::to_string(&self.attest).unwrap();
+        let sig = base64::encode(self.sig.to_bytes());
+        format!("{}-0B{}", json, sig)
+    }
+
+    pub fn deserialize(s: &str) -> Result<SignedAttestation, DeserializeError> {
         let de = serde_json::Deserializer::from_str(s);
-        let mut stream = de.into_iter::<T>();
+        let mut stream = de.into_iter::<Attestation>();
         let (data, s) = match stream.next() {
             Some(Ok(data)) => (data, &s[stream.byte_offset()..]),
-            Some(Err(err)) => return Err(Error::DataJSONInvalid(err)),
-            None => return Err(Error::DataMissing),
+            Some(Err(err)) => return Err(DeserializeError::DataJSONInvalid(err)),
+            None => return Err(DeserializeError::DataMissing),
         };
         let s = match (s.get(..1), s.get(1..)) {
             (Some("-"), Some(s)) => s,
-            _ => return Err(Error::SignatureMissing),
+            _ => return Err(DeserializeError::SignatureMissing),
         };
-        let sig = s.parse()?;
-        Ok(Self { data, sig })
+        let sig = match s {
+            s if s.starts_with("0B") => (base64::decode(&s[2..])?.as_slice().try_into()?),
+            _ => return Err(DeserializeError::SignatureTypeUnknown),
+        };
+        Ok(Self { attest: data, sig })
     }
-}
 
-/// https://github.com/decentralized-identity/keri/blob/master/kids/kid0001.md#base64-master-code-table
-#[derive(Debug, Clone, PartialEq)]
-pub enum Signature {
-    /// Ed25519 signature. Self-signing derivation.
-    Ed25519(ed25519_dalek::Signature),
-}
-
-impl ToString for Signature {
-    fn to_string(&self) -> String {
-        match self {
-            Self::Ed25519(sig) => format!("0B{}", base64::encode(&sig.to_bytes())),
-        }
-    }
-}
-
-impl FromStr for Signature {
-    type Err = Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            s if s.starts_with("0B") => Ok(Self::Ed25519(
-                base64::decode(&s[2..])?.as_slice().try_into()?,
-            )),
-            _ => Err(Error::SignatureTypeUnknown),
-        }
+    pub fn verify(&self, pub_keys: HashMap<String, Vec<u8>>) -> Result<(), VerifyError> {
+        let issuer = &self.attest.issuer;
+        let key = match pub_keys.get(issuer) {
+            Some(key) => ed25519_dalek::PublicKey::from_bytes(key)?,
+            None => return Err(VerifyError::PubKeyNotFound),
+        };
+        let json = serde_json::to_string(&self.attest).unwrap();
+        use ed25519_dalek::Verifier;
+        key.verify(json.as_bytes(), &self.sig)
+            .map_err(VerifyError::SignatureInvalid)
     }
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum Error {
+pub enum DeserializeError {
     #[error("signed data is missing")]
     DataMissing,
     #[error("signed data is an invalid JSON: {0}")]
@@ -74,4 +70,14 @@ pub enum Error {
     SignatureInvalidBase64(#[from] base64::DecodeError),
     #[error("unknown signature type")]
     SignatureTypeUnknown,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum VerifyError {
+    #[error("pub key not found")]
+    PubKeyNotFound,
+    #[error("pub key is invalid")]
+    PubKeyInvalid(#[from] ed25519_dalek::ed25519::Error),
+    #[error("signature is invalid")]
+    SignatureInvalid(ed25519_dalek::ed25519::Error),
 }
