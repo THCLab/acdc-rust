@@ -1,16 +1,13 @@
-use std::{collections::HashMap};
+use std::{collections::HashMap, convert::TryFrom};
 
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(into = "AttestationData")]
 pub struct Attestation {
     /// Version string of ACDC.
     #[serde(rename = "v")]
     pub version: String,
-
-    /// SAID of ACDC.
-    #[serde(rename = "d")]
-    pub digest: said::prefix::SelfAddressingPrefix,
 
     /// Attributable source identifier (Issuer, Testator).
     #[serde(rename = "i")]
@@ -33,29 +30,54 @@ pub struct Attestation {
     pub rules: Vec<serde_json::Value>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+struct AttestationData {
+    #[serde(flatten)]
+    attest: Attestation,
+
+    /// SAID of ACDC.
+    #[serde(rename = "d")]
+    pub digest: said::prefix::SelfAddressingPrefix,
+}
+
 impl Attestation {
     pub fn new(issuer: &str, schema: &str) -> Self {
-        let mut this = Self {
+        Self {
             version: "ACDC10JSON00011c_".to_string(),
-            digest: said::prefix::SelfAddressingPrefix::new(
-                said::derivation::SelfAddressing::Blake3_256,
-                b"################################".to_vec(),
-            ),
             issuer: issuer.to_string(),
             schema: schema.to_string(),
             attrs: HashMap::new(),
             prov_chain: Vec::new(),
             rules: Vec::new(),
-        };
-        let json = serde_json::to_string(&this).unwrap();
-        let digest = said::derivation::SelfAddressing::Blake3_256.derive(json.as_bytes());
-        this.digest = digest;
-        this
+        }
     }
 }
 
 impl ToString for Attestation {
     fn to_string(&self) -> String {
         serde_json::to_string(self).unwrap()
+    }
+}
+
+impl TryFrom<AttestationData> for Attestation {
+    type Error = ();
+
+    fn try_from(value: AttestationData) -> Result<Self, Self::Error> {
+        Ok(value.attest)
+    }
+}
+
+impl From<Attestation> for AttestationData {
+    fn from(val: Attestation) -> Self {
+        let mut json = serde_json::to_value(&val).unwrap();
+        json.as_object_mut()
+            .unwrap()
+            .insert("d".to_string(), serde_json::Value::String("#".repeat(32)));
+        let json = serde_json::to_string(&json).unwrap();
+        let digest = said::derivation::SelfAddressing::Blake3_256.derive(json.as_bytes());
+        AttestationData {
+            attest: val,
+            digest,
+        }
     }
 }
