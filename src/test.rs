@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use std::{collections::HashMap, convert::TryInto};
+use std::{collections::HashMap};
 
 use ed25519_dalek::{Keypair, Signer};
 use rand::rngs::OsRng;

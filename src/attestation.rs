@@ -1,9 +1,9 @@
-use std::{collections::HashMap, convert::TryFrom};
+use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::{ser::SerializeMap, Deserialize, Serialize};
+use serde_json::json;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(into = "AttestationData")]
+#[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct Attestation {
     /// Version string of ACDC.
     #[serde(rename = "v")]
@@ -30,14 +30,32 @@ pub struct Attestation {
     pub rules: Vec<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-struct AttestationData {
-    #[serde(flatten)]
-    attest: Attestation,
-
-    /// SAID of ACDC.
-    #[serde(rename = "d")]
-    pub digest: said::prefix::SelfAddressingPrefix,
+impl Serialize for Attestation {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let json = json!({
+            "v": self.version,
+            "d": "#".repeat(32),
+            "i": self.issuer,
+            "s": self.schema,
+            "a": self.attrs,
+            "p": self.prov_chain,
+            "r": self.rules,
+        });
+        let json = serde_json::to_string(&json).unwrap();
+        let digest = said::derivation::SelfAddressing::Blake3_256.derive(json.as_bytes());
+        let mut m = serializer.serialize_map(Some(7))?;
+        m.serialize_entry("v", &self.version)?;
+        m.serialize_entry("d", &digest)?;
+        m.serialize_entry("i", &self.issuer)?;
+        m.serialize_entry("s", &self.schema)?;
+        m.serialize_entry("a", &self.attrs)?;
+        m.serialize_entry("p", &self.prov_chain)?;
+        m.serialize_entry("r", &self.rules)?;
+        m.end()
+    }
 }
 
 impl Attestation {
@@ -56,28 +74,5 @@ impl Attestation {
 impl ToString for Attestation {
     fn to_string(&self) -> String {
         serde_json::to_string(self).unwrap()
-    }
-}
-
-impl TryFrom<AttestationData> for Attestation {
-    type Error = ();
-
-    fn try_from(value: AttestationData) -> Result<Self, Self::Error> {
-        Ok(value.attest)
-    }
-}
-
-impl From<Attestation> for AttestationData {
-    fn from(val: Attestation) -> Self {
-        let mut json = serde_json::to_value(&val).unwrap();
-        json.as_object_mut()
-            .unwrap()
-            .insert("d".to_string(), serde_json::Value::String("#".repeat(32)));
-        let json = serde_json::to_string(&json).unwrap();
-        let digest = said::derivation::SelfAddressing::Blake3_256.derive(json.as_bytes());
-        AttestationData {
-            attest: val,
-            digest,
-        }
     }
 }
