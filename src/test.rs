@@ -20,11 +20,9 @@ fn attest_ser_deser() {
     let sig = base64::decode(
         "+LsV0MWSqowHYQ+Hg5yvR6GIb6mPQ4orQ4tPRMNCcnEkYCtZELqicA216bucHOlP5m0dZorojkZY+tgLD3v6DA==",
     )
-    .unwrap()
-    .as_slice()
-    .try_into()
     .unwrap();
-    let attest = SignedAttestation::new_with_ed25519(attest, sig).unwrap();
+
+    let attest = SignedAttestation::new_with_ed25519(attest, sig.as_slice()).unwrap();
 
     let attest_str = attest.serialize();
 
@@ -65,7 +63,7 @@ fn attest_sign_verify() {
     let sig = keypair.sign(attest.to_string().as_bytes());
     let attest = SignedAttestation::new_with_ed25519(attest, &sig.to_bytes()).unwrap();
 
-    let oracle = HashMap::new();
+    let mut oracle = HashMap::new();
     oracle.insert(
         "did:keri:EQzFVaMasUf4cZZBKA0pUbRc9T8yUXRFLyM1JDASYqAA".to_string(),
         keypair.public.to_bytes().to_vec(),
