@@ -1,9 +1,13 @@
 use std::collections::HashMap;
 
-use serde::{ser::SerializeMap, Deserialize, Serialize};
-use serde_json::json;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+use crate::Authored;
+
+/// ACDC Attestation.
+///
+/// See: <https://github.com/trustoverip/TSS0033-technology-stack-acdc/blob/main/docs/index.md>
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Attestation {
     /// Version string of ACDC.
     #[serde(rename = "v")]
@@ -30,34 +34,6 @@ pub struct Attestation {
     pub rules: Vec<serde_json::Value>,
 }
 
-impl Serialize for Attestation {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let json = json!({
-            "v": self.version,
-            "d": "#".repeat(32),
-            "i": self.issuer,
-            "s": self.schema,
-            "a": self.attrs,
-            "p": self.prov_chain,
-            "r": self.rules,
-        });
-        let json = serde_json::to_string(&json).unwrap();
-        let digest = said::derivation::SelfAddressing::Blake3_256.derive(json.as_bytes());
-        let mut m = serializer.serialize_map(Some(7))?;
-        m.serialize_entry("v", &self.version)?;
-        m.serialize_entry("d", &digest)?;
-        m.serialize_entry("i", &self.issuer)?;
-        m.serialize_entry("s", &self.schema)?;
-        m.serialize_entry("a", &self.attrs)?;
-        m.serialize_entry("p", &self.prov_chain)?;
-        m.serialize_entry("r", &self.rules)?;
-        m.end()
-    }
-}
-
 impl Attestation {
     pub fn new(issuer: &str, schema: &str) -> Self {
         Self {
@@ -71,8 +47,8 @@ impl Attestation {
     }
 }
 
-impl ToString for Attestation {
-    fn to_string(&self) -> String {
-        serde_json::to_string(self).unwrap()
+impl Authored for Attestation {
+    fn get_author_id(&self) -> &str {
+        &self.issuer
     }
 }
