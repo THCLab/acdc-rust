@@ -5,6 +5,78 @@ use serde::{Deserialize, Serialize};
 use crate::Authored;
 
 /// Wraps a serializable type and provides methods to verify and convert to/from signed JSON string.
+///
+/// # Examples
+///
+/// Serializing:
+///
+/// ```
+/// # use std::collections::HashMap;
+/// use acdc::Signed;
+/// use ed25519_dalek::{Keypair, Signer};
+///
+/// // create some data
+/// let mut data: HashMap<String, String> = HashMap::new();
+/// data.insert("msg".to_string(), "hello".to_string());
+///
+/// // compute the signature of the data
+/// let mut rng = rand::rngs::OsRng {};
+/// let keypair = Keypair::generate(&mut rng);
+/// let sig = keypair.sign(&Signed::get_json_bytes(&data));
+///
+/// // create new signed instance with the data and the signature
+/// let data: Signed<HashMap<String, String>> =
+///     Signed::new_with_ed25519(data, &sig.to_bytes()).unwrap();
+///
+/// // serialize to signed json
+/// dbg!(data.to_signed_json()); // {"msg":"hello"}-SIGNATURE
+/// ```
+///
+/// Verifying:
+///
+/// ```
+/// # use std::collections::HashMap;
+/// use acdc::{Authored, Signed};
+/// use ed25519_dalek::{Keypair, Signer};
+/// use serde::{Serialize, Deserialize};
+///
+/// #[derive(Debug, Clone, Serialize, Deserialize)]
+/// struct Message {
+///     author: String,
+///     msg: String,
+/// }
+///
+/// impl Authored for Message {
+///     fn get_author_id(&self) -> &str {
+///         &self.author
+///     }
+/// }
+///
+/// // create some data
+/// let msg = Message {
+///     author: "alice".to_string(),
+///     msg: "hello".to_string(),
+/// };
+///
+/// // compute the signature of the data
+/// let mut rng = rand::rngs::OsRng {};
+/// let keypair = Keypair::generate(&mut rng);
+/// let sig = keypair.sign(&Signed::get_json_bytes(&msg));
+///
+/// // create new signed instance with the data and the signature
+/// let msg: Signed<Message> =
+///     Signed::new_with_ed25519(msg, &sig.to_bytes()).unwrap();
+///
+/// // initialize known public keys database
+/// let mut pub_keys = HashMap::new();
+/// pub_keys.insert(
+///     "alice".to_string(),
+///     keypair.public.to_bytes().to_vec(),
+/// );
+///
+/// // verify
+/// assert!(msg.verify(&pub_keys).is_ok());
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Signed<T> {
     pub data: T,
@@ -15,18 +87,26 @@ impl<'a, T> Signed<T>
 where
     T: Serialize + Deserialize<'a>,
 {
+    /// Create a new [Signed] instance with a `ED25519_dalek` signature.
     pub fn new_with_ed25519(data: T, sig: &[u8]) -> Result<Self, ed25519_dalek::ed25519::Error> {
         use std::convert::TryFrom;
         let sig = ed25519_dalek::Signature::try_from(sig)?;
         Ok(Self { data, sig })
     }
 
+    /// Get JSON bytes for given data for signing.
+    pub fn get_json_bytes(data: &T) -> Vec<u8> {
+        serde_json::to_vec(data).unwrap()
+    }
+
+    /// Serialize to signed JSON.
     pub fn to_signed_json(&self) -> String {
         let json = serde_json::to_string(&self.data).unwrap();
         let sig = base64::encode(self.sig.to_bytes());
         format!("{}-0B{}", json, sig)
     }
 
+    /// Deserialize from signed JSON.
     pub fn from_signed_json(s: &'a str) -> Result<Self, DeserializeError> {
         let de = serde_json::Deserializer::from_str(s);
         let mut stream = de.into_iter::<T>();
@@ -51,7 +131,8 @@ impl<'a, T> Signed<T>
 where
     T: Serialize + Authored,
 {
-    pub fn verify(&self, pub_keys: HashMap<String, Vec<u8>>) -> Result<(), VerifyError> {
+    /// Verify signature.
+    pub fn verify(&self, pub_keys: &HashMap<String, Vec<u8>>) -> Result<(), VerifyError> {
         let issuer = self.data.get_author_id();
         let key = match pub_keys.get(issuer) {
             Some(key) => {

@@ -33,10 +33,6 @@ impl<T: Serialize> Hashed<T> {
     pub fn get_hash(&self) -> &SelfAddressingPrefix {
         &self.hash
     }
-
-    pub fn to_bytes(&self) -> Vec<u8> {
-        serde_json::to_string(self).unwrap().into()
-    }
 }
 
 impl<T> Authored for Hashed<T>
