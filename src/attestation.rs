@@ -19,7 +19,7 @@ pub struct Attestation {
 
     /// Schema SAID.
     #[serde(rename = "s")]
-    pub schema: String,
+    pub schema: said::prefix::SelfAddressingPrefix,
 
     /// Attributes.
     #[serde(rename = "a")]
@@ -48,11 +48,11 @@ pub enum Attributes {
 }
 
 impl Attestation {
-    pub fn new(issuer: &str, schema: &str) -> Self {
+    pub fn new(issuer: &str, schema: said::prefix::SelfAddressingPrefix) -> Self {
         Self {
             version: Version::ACDC1,
             issuer: issuer.to_string(),
-            schema: schema.to_string(),
+            schema,
             attrs: Attributes::Inline(HashMap::new()),
             prov_chain: Vec::new(),
             rules: Vec::new(),

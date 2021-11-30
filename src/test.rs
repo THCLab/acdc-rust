@@ -11,7 +11,9 @@ use crate::{Attestation, Attributes, Hashed, Signed};
 fn attest_ser_deser() {
     let mut attest: Attestation = Attestation::new(
         "did:keri:EmkPreYpZfFk66jpf3uFv7vklXKhzBrAqjsKAn2EDIPM",
-        "E46jrVPTzlSkUPqGGeIZ8a8FWS7a6s4reAXRZOkogZ2A",
+        "E46jrVPTzlSkUPqGGeIZ8a8FWS7a6s4reAXRZOkogZ2A"
+            .parse()
+            .unwrap(),
     );
     attest.attrs = Attributes::Inline({
         let mut map = HashMap::new();
@@ -58,7 +60,9 @@ fn attest_ser_deser() {
 fn attest_sign_verify() {
     let mut attest = Attestation::new(
         "did:keri:EQzFVaMasUf4cZZBKA0pUbRc9T8yUXRFLyM1JDASYqAA",
-        "EBdXt3gIXOf2BBWNHdSXCJnFJL5OuQPyM5K0neuniccM",
+        "EBdXt3gIXOf2BBWNHdSXCJnFJL5OuQPyM5K0neuniccM"
+            .parse()
+            .unwrap(),
     );
     attest.attrs = Attributes::Inline({
         let mut map = HashMap::new();
