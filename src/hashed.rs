@@ -1,3 +1,5 @@
+//! Type which contains its digest.
+
 use said::prefix::SelfAddressingPrefix;
 use serde::{Deserialize, Serialize};
 
@@ -16,6 +18,10 @@ pub struct Hashed<T> {
 }
 
 impl<T: Serialize> Hashed<T> {
+    /// Creates new Hashed value.
+    ///
+    /// # Panics
+    /// Panics when the wrapped value doesn't serialize to a JSON object.
     pub fn new(data: T) -> Self {
         let mut json = serde_json::to_value(&data).unwrap();
         json.as_object_mut()
@@ -26,10 +32,12 @@ impl<T: Serialize> Hashed<T> {
         Self { data, hash }
     }
 
+    /// Get the data as an immutable reference.
     pub fn get_data(&self) -> &T {
         &self.data
     }
 
+    /// Get the hash as an immutable reference.
     pub fn get_hash(&self) -> &SelfAddressingPrefix {
         &self.hash
     }

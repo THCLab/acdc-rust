@@ -1,3 +1,5 @@
+//! Type which contains its signature.
+
 use std::{collections::HashMap, convert::TryInto};
 
 use serde::{Deserialize, Serialize};
@@ -8,7 +10,7 @@ use crate::Authored;
 ///
 /// # Examples
 ///
-/// Serializing:
+/// ## Serializing
 ///
 /// ```
 /// # use std::collections::HashMap;
@@ -32,7 +34,7 @@ use crate::Authored;
 /// dbg!(data.to_signed_json()); // {"msg":"hello"}-SIGNATURE
 /// ```
 ///
-/// Verifying:
+/// ## Verifying
 ///
 /// ```
 /// # use std::collections::HashMap;
@@ -79,7 +81,9 @@ use crate::Authored;
 /// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Signed<T> {
+    /// The signed data.
     pub data: T,
+    /// The signature of the data.
     pub sig: ed25519_dalek::Signature,
 }
 
@@ -88,6 +92,9 @@ where
     T: Serialize + Deserialize<'a>,
 {
     /// Create a new [Signed] instance with a `ED25519_dalek` signature.
+    ///
+    /// # Errors
+    /// Returns an error when the signature bytes are invalid.
     pub fn new_with_ed25519(data: T, sig: &[u8]) -> Result<Self, ed25519_dalek::ed25519::Error> {
         use std::convert::TryFrom;
         let sig = ed25519_dalek::Signature::try_from(sig)?;
@@ -95,11 +102,17 @@ where
     }
 
     /// Get JSON bytes for given data for signing.
+    ///
+    /// # Panics
+    /// Panics if T's implementation of Serialize decides to fail.
     pub fn get_json_bytes(data: &T) -> Vec<u8> {
         serde_json::to_vec(data).unwrap()
     }
 
     /// Serialize to signed JSON.
+    ///
+    /// # Panics
+    /// Panics if T's implementation of Serialize decides to fail.
     pub fn to_signed_json(&self) -> String {
         let json = serde_json::to_string(&self.data).unwrap();
         let sig = base64::encode(self.sig.to_bytes());
@@ -107,6 +120,9 @@ where
     }
 
     /// Deserialize from signed JSON.
+    ///
+    /// # Errors
+    /// Returns error when the input is not a valid JSON + signature.
     pub fn from_signed_json(s: &'a str) -> Result<Self, DeserializeError> {
         let de = serde_json::Deserializer::from_str(s);
         let mut stream = de.into_iter::<T>();
@@ -132,7 +148,14 @@ where
     T: Serialize + Authored,
 {
     /// Verify signature.
+    ///
+    /// # Panics
+    /// Panics if T's implementation of Serialize decides to fail.
+    ///
+    /// # Errors
+    /// Returns error when the verification fails.
     pub fn verify(&self, pub_keys: &HashMap<String, Vec<u8>>) -> Result<(), VerifyError> {
+        use ed25519_dalek::Verifier;
         let issuer = self.data.get_author_id();
         let key = match pub_keys.get(issuer) {
             Some(key) => {
@@ -141,34 +164,51 @@ where
             None => return Err(VerifyError::PubKeyNotFound),
         };
         let json = serde_json::to_string(&self.data).unwrap();
-        use ed25519_dalek::Verifier;
         key.verify(json.as_bytes(), &self.sig)
             .map_err(VerifyError::SignatureInvalid)
     }
 }
 
+/// [Signed] deserialize error.
 #[derive(Debug, thiserror::Error)]
 pub enum DeserializeError {
+    /// Signed data is missing.
     #[error("signed data is missing")]
     DataMissing,
+
+    /// Signed data is an invalid JSON: {0}.
     #[error("signed data is an invalid JSON: {0}")]
     DataJSONInvalid(#[from] serde_json::Error),
+
+    /// Signature is missing.
     #[error("signature is missing")]
     SignatureMissing,
+
+    /// Signature is invalid.
     #[error("signature is invalid")]
     SignatureInvalid(#[from] ed25519_dalek::ed25519::Error),
+
+    /// Can't decode signature from base64.
     #[error("can't decode signature from base64")]
     SignatureInvalidBase64(#[from] base64::DecodeError),
+
+    /// Unknown signature type.
     #[error("unknown signature type")]
     SignatureTypeUnknown,
 }
 
+/// [Signed] verify error.
 #[derive(Debug, thiserror::Error)]
 pub enum VerifyError {
+    /// Pub key not found.
     #[error("pub key not found")]
     PubKeyNotFound,
+
+    /// Pub key is invalid.
     #[error("pub key is invalid")]
     PubKeyInvalid(ed25519_dalek::SignatureError),
+
+    /// Signature is invalid.
     #[error("signature is invalid")]
     SignatureInvalid(ed25519_dalek::ed25519::Error),
 }
