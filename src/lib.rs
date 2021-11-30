@@ -17,4 +17,4 @@ mod test;
 pub use attestation::{Attestation, Attributes, Version};
 pub use authored::Authored;
 pub use hashed::Hashed;
-pub use signed::Signed;
+pub use signed::{PubKey, Signed};

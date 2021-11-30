@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use ed25519_dalek::{Keypair, Signer};
 use rand::rngs::OsRng;
 
-use crate::{Attestation, Attributes, Hashed, Signed};
+use crate::{Attestation, Attributes, Hashed, PubKey, Signed};
 
 #[test]
 fn attest_ser_deser() {
@@ -83,7 +83,7 @@ fn attest_sign_verify() {
     let mut oracle = HashMap::new();
     oracle.insert(
         "did:keri:EQzFVaMasUf4cZZBKA0pUbRc9T8yUXRFLyM1JDASYqAA".to_string(),
-        keypair.public.to_bytes().to_vec(),
+        PubKey::ED25519(keypair.public.to_bytes().to_vec()),
     );
     attest.verify(&oracle).unwrap();
 }

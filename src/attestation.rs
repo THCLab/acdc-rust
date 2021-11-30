@@ -15,7 +15,7 @@ use crate::Authored;
 ///
 /// ```
 /// # use std::collections::HashMap;
-/// use acdc::{Attestation, Hashed, Signed};
+/// use acdc::{Attestation, Hashed, PubKey, Signed};
 /// use ed25519_dalek::{Keypair, Signer};
 ///
 /// // create some attestation
@@ -45,7 +45,7 @@ use crate::Authored;
 /// let mut pub_keys = HashMap::new();
 /// pub_keys.insert(
 ///     "did:keri:EmkPreYpZfFk66jpf3uFv7vklXKhzBrAqjsKAn2EDIPM".to_string(),
-///     keypair.public.to_bytes().to_vec(),
+///     PubKey::ED25519(keypair.public.to_bytes().to_vec()),
 /// );
 /// attest.verify(&pub_keys).unwrap();
 /// ```
