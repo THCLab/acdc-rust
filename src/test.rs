@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use ed25519_dalek::{Keypair, Signer};
 use rand::rngs::OsRng;
 
-use crate::{Attestation, Hashed, Signed};
+use crate::{Attestation, Attributes, Hashed, Signed};
 
 #[test]
 fn attest_ser_deser() {
@@ -13,10 +13,14 @@ fn attest_ser_deser() {
         "did:keri:EmkPreYpZfFk66jpf3uFv7vklXKhzBrAqjsKAn2EDIPM",
         "E46jrVPTzlSkUPqGGeIZ8a8FWS7a6s4reAXRZOkogZ2A",
     );
-    attest.attrs.insert(
-        "dt".to_string(),
-        "2021-06-09T17:35:54.169967+00:00".to_string(),
-    );
+    attest.attrs = Attributes::Inline({
+        let mut map = HashMap::new();
+        map.insert(
+            "dt".to_string(),
+            "2021-06-09T17:35:54.169967+00:00".to_string(),
+        );
+        map
+    });
     let attest: Hashed<Attestation> = Hashed::new(attest);
 
     let sig: Vec<u8> = base64::decode(
@@ -56,10 +60,14 @@ fn attest_sign_verify() {
         "did:keri:EQzFVaMasUf4cZZBKA0pUbRc9T8yUXRFLyM1JDASYqAA",
         "EBdXt3gIXOf2BBWNHdSXCJnFJL5OuQPyM5K0neuniccM",
     );
-    attest.attrs.insert(
-        "dt".to_string(),
-        "2021-06-09T17:35:54.169967+00:00".to_string(),
-    );
+    attest.attrs = Attributes::Inline({
+        let mut map = HashMap::new();
+        map.insert(
+            "dt".to_string(),
+            "2021-06-09T17:35:54.169967+00:00".to_string(),
+        );
+        map
+    });
     let attest = Hashed::new(attest);
 
     let mut rng = OsRng {};

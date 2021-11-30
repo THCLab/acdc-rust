@@ -11,7 +11,7 @@ use crate::Authored;
 pub struct Attestation {
     /// Version string of ACDC.
     #[serde(rename = "v")]
-    pub version: String,
+    pub version: Version,
 
     /// Attributable source identifier (Issuer, Testator).
     #[serde(rename = "i")]
@@ -23,7 +23,7 @@ pub struct Attestation {
 
     /// Attributes.
     #[serde(rename = "a")]
-    pub attrs: HashMap<String, String>,
+    pub attrs: Attributes,
 
     /// Provenance chain.
     #[serde(rename = "p")]
@@ -34,13 +34,26 @@ pub struct Attestation {
     pub rules: Vec<serde_json::Value>,
 }
 
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum Version {
+    #[serde(rename = "ACDC10JSON00011c_")]
+    ACDC1,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Attributes {
+    Inline(HashMap<String, String>),
+    External(said::prefix::SelfAddressingPrefix),
+}
+
 impl Attestation {
     pub fn new(issuer: &str, schema: &str) -> Self {
         Self {
-            version: "ACDC10JSON00011c_".to_string(),
+            version: Version::ACDC1,
             issuer: issuer.to_string(),
             schema: schema.to_string(),
-            attrs: HashMap::new(),
+            attrs: Attributes::Inline(HashMap::new()),
             prov_chain: Vec::new(),
             rules: Vec::new(),
         }
