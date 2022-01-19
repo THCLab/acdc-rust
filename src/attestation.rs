@@ -1,13 +1,59 @@
+//! ACDC Attestation.
+//!
+//! See: [`Attestation`]
+
 use std::collections::HashMap;
 
-use serde::{ser::SerializeMap, Deserialize, Serialize};
-use serde_json::json;
+use said::prefix::SelfAddressingPrefix;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, PartialEq, Deserialize)]
+use crate::Authored;
+
+/// ACDC Attestation.
+///
+/// # Examples
+///
+/// ```
+/// # use std::collections::HashMap;
+/// use acdc::{Attestation, Hashed, PubKey, Signed};
+/// use ed25519_dalek::{Keypair, Signer};
+///
+/// // create some attestation
+/// let mut attest: Attestation = Attestation::new(
+///     "did:keri:EmkPreYpZfFk66jpf3uFv7vklXKhzBrAqjsKAn2EDIPM",
+///     "E46jrVPTzlSkUPqGGeIZ8a8FWS7a6s4reAXRZOkogZ2A"
+///         .parse()
+///         .unwrap(),
+/// );
+///
+/// // Add digest field to attestation
+/// let attest: Hashed<Attestation> = Hashed::new(attest);
+///
+/// // compute the signature of the attestation
+/// let mut rng = rand::rngs::OsRng {};
+/// let keypair = Keypair::generate(&mut rng);
+/// let sig = keypair.sign(&Signed::get_json_bytes(&attest));
+///
+/// // create new signed instance with the attestation and the signature
+/// let attest: Signed<Hashed<Attestation>> =
+///     Signed::new_with_ed25519(attest, &sig.to_bytes()).unwrap();
+///
+/// // serialize to signed json
+/// dbg!(attest.to_signed_json()); // {"v":"ACDC10JSON00011c_",…}-SIGNATURE
+///
+/// // verify the signature
+/// let mut pub_keys = HashMap::new();
+/// pub_keys.insert(
+///     "did:keri:EmkPreYpZfFk66jpf3uFv7vklXKhzBrAqjsKAn2EDIPM".to_string(),
+///     PubKey::ED25519(keypair.public.to_bytes().to_vec()),
+/// );
+/// attest.verify(&pub_keys).unwrap();
+/// ```
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Attestation {
     /// Version string of ACDC.
     #[serde(rename = "v")]
-    pub version: String,
+    pub version: Version,
 
     /// Attributable source identifier (Issuer, Testator).
     #[serde(rename = "i")]
@@ -15,11 +61,11 @@ pub struct Attestation {
 
     /// Schema SAID.
     #[serde(rename = "s")]
-    pub schema: String,
+    pub schema: said::prefix::SelfAddressingPrefix,
 
     /// Attributes.
     #[serde(rename = "a")]
-    pub attrs: HashMap<String, String>,
+    pub attrs: Attributes,
 
     /// Provenance chain.
     #[serde(rename = "p")]
@@ -30,49 +76,41 @@ pub struct Attestation {
     pub rules: Vec<serde_json::Value>,
 }
 
-impl Serialize for Attestation {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let json = json!({
-            "v": self.version,
-            "d": "#".repeat(32),
-            "i": self.issuer,
-            "s": self.schema,
-            "a": self.attrs,
-            "p": self.prov_chain,
-            "r": self.rules,
-        });
-        let json = serde_json::to_string(&json).unwrap();
-        let digest = said::derivation::SelfAddressing::Blake3_256.derive(json.as_bytes());
-        let mut m = serializer.serialize_map(Some(7))?;
-        m.serialize_entry("v", &self.version)?;
-        m.serialize_entry("d", &digest)?;
-        m.serialize_entry("i", &self.issuer)?;
-        m.serialize_entry("s", &self.schema)?;
-        m.serialize_entry("a", &self.attrs)?;
-        m.serialize_entry("p", &self.prov_chain)?;
-        m.serialize_entry("r", &self.rules)?;
-        m.end()
-    }
+/// Attestation version.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum Version {
+    /// Initial version.
+    #[serde(rename = "ACDC10JSON00011c_")]
+    ACDC1,
+}
+
+/// Attestation attributes.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Attributes {
+    /// Inlined attributes as a JSON object.
+    Inline(HashMap<String, String>),
+    /// External attributes identified by their [`SelfAddressingPrefix`].
+    External(SelfAddressingPrefix),
 }
 
 impl Attestation {
-    pub fn new(issuer: &str, schema: &str) -> Self {
+    /// Creates a new attestation with given issuer and schema.
+    #[must_use]
+    pub fn new(issuer: &str, schema: said::prefix::SelfAddressingPrefix) -> Self {
         Self {
-            version: "ACDC10JSON00011c_".to_string(),
+            version: Version::ACDC1,
             issuer: issuer.to_string(),
-            schema: schema.to_string(),
-            attrs: HashMap::new(),
+            schema,
+            attrs: Attributes::Inline(HashMap::new()),
             prov_chain: Vec::new(),
             rules: Vec::new(),
         }
     }
 }
 
-impl ToString for Attestation {
-    fn to_string(&self) -> String {
-        serde_json::to_string(self).unwrap()
+impl Authored for Attestation {
+    fn get_author_id(&self) -> &str {
+        &self.issuer
     }
 }
