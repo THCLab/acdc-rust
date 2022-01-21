@@ -21,6 +21,6 @@ uriparse = "0.6.3"
 ed25519-dalek = "1.0.1"
 said = "0.1.2"
 rand = "0.7.3"
-keri = { git = "https://github.com/WebOfTrust/keriox", optional = true }
+keri = { git = "https://github.com/WebOfTrust/keriox", branch = "witness_rotation", optional = true }
 
 [dev-dependencies]
