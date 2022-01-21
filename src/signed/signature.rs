@@ -1,7 +1,7 @@
 use std::{convert::TryInto, str::FromStr};
 
 #[cfg(feature = "keriox")]
-use keri::event_parsing::Attachment;
+use keri::event_parsing::{Attachment, attachment::attachment};
 #[cfg(feature = "keriox")]
 use keri::prefix::AttachedSignaturePrefix;
 
@@ -37,6 +37,15 @@ impl FromStr for Signature {
                     .try_into()
                     .map_err(|_| ParseError::InvalidBytes)?,
             ),
+            #[cfg(feature = "keriox")]
+            s if s.starts_with("0K") => {
+                let att = attachment(&s[2..].as_bytes());
+                if let Ok((_, Attachment::AttachedSignatures(sigs))) = att {
+                    Ok(Self::KeriSignatures(sigs))
+                } else {
+                    Err(ParseError::InvalidBytes)
+                }?
+            }
             _ => return Err(ParseError::TypeUnknown),
         };
         Ok(sig)

@@ -187,7 +187,7 @@ where
                     .map_err(VerifyError::PubKeyInvalid)?;
                 key.verify(json.as_bytes(), sig)
                     .map_err(VerifyError::Ed25519SignatureInvalid)
-            },
+            }
             #[cfg(feature = "keriox")]
             PubKey::KeriKeys(key_config) => {
                 if let signature::Signature::KeriSignatures(ks) = self.sig.clone() {
@@ -242,4 +242,13 @@ pub enum VerifyError {
     /// Signature is invalid.
     #[error("signature is invalid")]
     SignatureInvalid,
+}
+
+#[cfg(feature = "keriox")]
+#[test]
+fn test_parsing_keri_signatures() {
+    use crate::Attestation;
+    let signed = r#"{"v":"ACDC10JSON00011c_","i":"DeTaMr5iQxkiANa-prF_bqRdBrIudP293QJU5Td6Zalg","s":"E46jrVPTzlSkUPqGGeIZ8a8FWS7a6s4reAXRZOkogZ2A","a":{},"p":[],"r":[],"d":"EW8yY4SUSxMdVCT0ZyFT_WI8yA3nnewFgRGEI-xtiAJY"}-0K-AABAAaD8fuGiHip2QcPT3YJgz7l4KS7yMWTw67Y-IYpC2JYBts50EOL1Zu0zq3RmWbrg8FvEEioH078kt_2L59y62Aw"#;
+    let s: Result<Signed<Attestation>, _> = Signed::from_signed_json(signed);
+    assert!(s.is_ok())
 }
