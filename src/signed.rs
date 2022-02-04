@@ -186,7 +186,7 @@ where
                 let key = ed25519_dalek::PublicKey::from_bytes(key)
                     .map_err(VerifyError::PubKeyInvalid)?;
                 key.verify(json.as_bytes(), sig)
-                    .map_err(VerifyError::Ed25519SignatureInvalid)
+                    .map_err(|_| VerifyError::SignatureInvalid)
             }
             #[cfg(feature = "keriox")]
             PubKey::KeriKeys(key_config) => {
@@ -234,10 +234,6 @@ pub enum VerifyError {
     /// Pub key is invalid.
     #[error("pub key is invalid")]
     PubKeyInvalid(ed25519_dalek::SignatureError),
-
-    /// Signature is invalid.
-    #[error("signature is invalid")]
-    Ed25519SignatureInvalid(ed25519_dalek::ed25519::Error),
 
     /// Signature is invalid.
     #[error("signature is invalid")]
