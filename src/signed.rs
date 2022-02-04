@@ -5,6 +5,8 @@ mod signature;
 
 use std::collections::HashMap;
 
+#[cfg(feature = "keriox")]
+use keri::prefix::AttachedSignaturePrefix;
 use serde::{Deserialize, Serialize};
 
 pub use self::pub_key::PubKey;
@@ -105,6 +107,17 @@ where
         Ok(Self { data, sig })
     }
 
+    /// Create a new [Signed] instance with a `keriox` signature.
+    ///
+    #[cfg(feature = "keriox")]
+    pub fn new_with_keri_signatures(
+        data: T,
+        sig: &[AttachedSignaturePrefix],
+    ) -> Result<Self, keri::error::Error> {
+        let sig = signature::Signature::KeriSignatures(sig.to_vec());
+        Ok(Self { data, sig })
+    }
+
     /// Get JSON bytes for given data for signing.
     ///
     /// # Panics
@@ -173,7 +186,19 @@ where
                 let key = ed25519_dalek::PublicKey::from_bytes(key)
                     .map_err(VerifyError::PubKeyInvalid)?;
                 key.verify(json.as_bytes(), sig)
-                    .map_err(VerifyError::SignatureInvalid)
+                    .map_err(|_| VerifyError::SignatureInvalid)
+            }
+            #[cfg(feature = "keriox")]
+            PubKey::KeriKeys(key_config) => {
+                if let signature::Signature::KeriSignatures(ks) = self.sig.clone() {
+                    key_config
+                        .verify(json.as_bytes(), &ks)
+                        .map_err(|_e| VerifyError::SignatureInvalid)?
+                        .then(|| ())
+                        .ok_or(VerifyError::SignatureInvalid)
+                } else {
+                    Err(VerifyError::SignatureInvalid)
+                }
             }
         }
     }
@@ -212,5 +237,14 @@ pub enum VerifyError {
 
     /// Signature is invalid.
     #[error("signature is invalid")]
-    SignatureInvalid(ed25519_dalek::ed25519::Error),
+    SignatureInvalid,
+}
+
+#[cfg(feature = "keriox")]
+#[test]
+fn test_parsing_keri_signatures() {
+    use crate::{Attestation, Hashed};
+    let signed = r#"{"v":"ACDC10JSON00011c_","i":"DeTaMr5iQxkiANa-prF_bqRdBrIudP293QJU5Td6Zalg","s":"E46jrVPTzlSkUPqGGeIZ8a8FWS7a6s4reAXRZOkogZ2A","a":{},"p":[],"r":[],"d":"EW8yY4SUSxMdVCT0ZyFT_WI8yA3nnewFgRGEI-xtiAJY"}-0K-AABAAaD8fuGiHip2QcPT3YJgz7l4KS7yMWTw67Y-IYpC2JYBts50EOL1Zu0zq3RmWbrg8FvEEioH078kt_2L59y62Aw"#;
+    let s: Result<Signed<Hashed<Attestation>>, _> = Signed::from_signed_json(signed);
+    assert!(s.is_ok())
 }
