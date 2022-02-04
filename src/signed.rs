@@ -243,8 +243,8 @@ pub enum VerifyError {
 #[cfg(feature = "keriox")]
 #[test]
 fn test_parsing_keri_signatures() {
-    use crate::Attestation;
+    use crate::{Attestation, Hashed};
     let signed = r#"{"v":"ACDC10JSON00011c_","i":"DeTaMr5iQxkiANa-prF_bqRdBrIudP293QJU5Td6Zalg","s":"E46jrVPTzlSkUPqGGeIZ8a8FWS7a6s4reAXRZOkogZ2A","a":{},"p":[],"r":[],"d":"EW8yY4SUSxMdVCT0ZyFT_WI8yA3nnewFgRGEI-xtiAJY"}-0K-AABAAaD8fuGiHip2QcPT3YJgz7l4KS7yMWTw67Y-IYpC2JYBts50EOL1Zu0zq3RmWbrg8FvEEioH078kt_2L59y62Aw"#;
-    let s: Result<Signed<Attestation>, _> = Signed::from_signed_json(signed);
+    let s: Result<Signed<Hashed<Attestation>>, _> = Signed::from_signed_json(signed);
     assert!(s.is_ok())
 }

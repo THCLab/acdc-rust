@@ -1,7 +1,7 @@
 use std::{convert::TryInto, str::FromStr};
 
 #[cfg(feature = "keriox")]
-use keri::event_parsing::{Attachment, attachment::attachment};
+use keri::event_parsing::{attachment::attachment, Attachment};
 #[cfg(feature = "keriox")]
 use keri::prefix::AttachedSignaturePrefix;
 
