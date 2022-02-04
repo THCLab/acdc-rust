@@ -500,7 +500,7 @@ checksum = "67c21572b4949434e4fc1e1978b99c5f77064153c59d998bf13ecd96fb5ecba7"
 [[package]]
 name = "keri"
 version = "0.8.0"
-source = "git+https://github.com/WebOfTrust/keriox?branch=witness_rotation#8a152c066c5b47c32abbaf7ff04e29ea11bdf4dc"
+source = "git+ssh://git@github.com/THCLab/keriox.git#9a3a75353b1ce4a7d2ae8ea97aac366eda16b662"
 dependencies = [
  "arrayref",
  "base64 0.13.0",
