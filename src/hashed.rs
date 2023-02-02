@@ -1,6 +1,6 @@
 //! Type which contains its digest.
 
-use said::prefix::SelfAddressingPrefix;
+use sai::SelfAddressingPrefix;
 use serde::{Deserialize, Serialize};
 
 use crate::Authored;
@@ -28,7 +28,7 @@ impl<T: Serialize> Hashed<T> {
             .expect("hashed data must serialize to JSON object")
             .insert("d".to_string(), "#".repeat(32).into());
         let json = serde_json::to_string(&json).unwrap();
-        let hash = said::derivation::SelfAddressing::Blake3_256.derive(json.as_bytes());
+        let hash = sai::derivation::SelfAddressing::Blake3_256.derive(json.as_bytes());
         Self { data, hash }
     }
 

@@ -4,8 +4,34 @@ use std::collections::HashMap;
 
 use ed25519_dalek::{Keypair, Signer};
 use rand::rngs::OsRng;
+use sai::derivation::SelfAddressing;
 
 use crate::{Attestation, Attributes, Hashed, PubKey, Signed};
+
+#[test]
+fn test_acdc_digest() {
+    let mut attest = Attestation::new(
+        "did:keri:EQzFVaMasUf4cZZBKA0pUbRc9T8yUXRFLyM1JDASYqAA",
+        "EBdXt3gIXOf2BBWNHdSXCJnFJL5OuQPyM5K0neuniccM"
+            .parse()
+            .unwrap(),
+        SelfAddressing::Blake3_256,
+    );
+
+    let expected_acdc = r#"{"v":"ACDCOCA10JSON0000cd_","d":"EIxxFHxaPapGIbN9MifnNMPxj9fnyHdny-DYENz7vJSs","i":"did:keri:EQzFVaMasUf4cZZBKA0pUbRc9T8yUXRFLyM1JDASYqAA","ri":"","s":"EBdXt3gIXOf2BBWNHdSXCJnFJL5OuQPyM5K0neuniccM","a":{}}"#;
+    let dummy = format!(
+        r#"{{"v":"ACDCOCA10JSON0000cd_","d":"{}","i":"did:keri:EQzFVaMasUf4cZZBKA0pUbRc9T8yUXRFLyM1JDASYqAA","ri":"","s":"EBdXt3gIXOf2BBWNHdSXCJnFJL5OuQPyM5K0neuniccM","a":{{}}}}"#,
+        "############################################"
+    );
+
+    assert_eq!(attest.version.size, expected_acdc.len());
+    assert!(attest.digest.verify_binding(dummy.as_bytes()));
+
+    assert_eq!(
+        expected_acdc,
+        String::from_utf8(attest.encode().unwrap()).unwrap()
+    );
+}
 
 #[test]
 fn attest_ser_deser() {
@@ -14,6 +40,7 @@ fn attest_ser_deser() {
         "E46jrVPTzlSkUPqGGeIZ8a8FWS7a6s4reAXRZOkogZ2A"
             .parse()
             .unwrap(),
+        sai::derivation::SelfAddressing::Blake3_256,
     );
     attest.attrs = Attributes::Inline({
         let mut map = HashMap::new();
@@ -63,6 +90,7 @@ fn attest_sign_verify() {
         "EBdXt3gIXOf2BBWNHdSXCJnFJL5OuQPyM5K0neuniccM"
             .parse()
             .unwrap(),
+        sai::derivation::SelfAddressing::Blake3_256,
     );
     attest.attrs = Attributes::Inline({
         let mut map = HashMap::new();

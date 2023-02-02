@@ -4,10 +4,11 @@
 
 use std::collections::HashMap;
 
-use said::prefix::SelfAddressingPrefix;
-use serde::{Deserialize, Serialize};
+use sai::{derivation::SelfAddressing, SelfAddressingPrefix};
+use serde::{Deserialize, Serialize, Serializer};
+use version::serialization_info::{SerializationFormats, SerializationInfo};
 
-use crate::Authored;
+use crate::{error::Error, Authored};
 
 /// ACDC Attestation.
 ///
@@ -53,35 +54,47 @@ use crate::Authored;
 pub struct Attestation {
     /// Version string of ACDC.
     #[serde(rename = "v")]
-    pub version: Version,
+    pub version: SerializationInfo,
+
+    /// Digest of attestaion
+    #[serde(rename = "d", serialize_with = "dummy_serialize")]
+    pub digest: SelfAddressingPrefix,
 
     /// Attributable source identifier (Issuer, Testator).
     #[serde(rename = "i")]
     pub issuer: String,
 
+    /// Issuance and/or revocation, transfer, or retraction registry for ACDC
+    /// derived from Issuer Identifier.
+    #[serde(rename = "ri")]
+    pub registry_identifier: String,
+
     /// Schema SAID.
     #[serde(rename = "s")]
-    pub schema: said::prefix::SelfAddressingPrefix,
+    pub schema: SelfAddressingPrefix,
 
     /// Attributes.
     #[serde(rename = "a")]
     pub attrs: Attributes,
+    // /// Provenance chain.
+    // #[serde(rename = "p")]
+    // pub prov_chain: Vec<String>,
 
-    /// Provenance chain.
-    #[serde(rename = "p")]
-    pub prov_chain: Vec<String>,
-
-    /// Rules rules/delegation/consent/license/data agreement under which data are shared.
-    #[serde(rename = "r")]
-    pub rules: Vec<serde_json::Value>,
+    // /// Rules rules/delegation/consent/license/data agreement under which data are shared.
+    // #[serde(rename = "r")]
+    // pub rules: Vec<serde_json::Value>,
 }
 
-/// Attestation version.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum Version {
-    /// Initial version.
-    #[serde(rename = "ACDC10JSON00011c_")]
-    ACDC1,
+fn dummy_serialize<S>(x: &SelfAddressingPrefix, s: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    if x.eq(&x.derivation.derive(&[])) {
+        let dummy = "#".repeat(x.derivation.get_len());
+        s.serialize_str(&dummy)
+    } else {
+        x.serialize(s)
+    }
 }
 
 /// Attestation attributes.
@@ -95,17 +108,31 @@ pub enum Attributes {
 }
 
 impl Attestation {
+    pub fn encode(&self) -> Result<Vec<u8>, Error> {
+        Ok(self.version.kind.encode(self)?)
+    }
+
     /// Creates a new attestation with given issuer and schema.
     #[must_use]
-    pub fn new(issuer: &str, schema: said::prefix::SelfAddressingPrefix) -> Self {
-        Self {
-            version: Version::ACDC1,
+    pub fn new(issuer: &str, schema: SelfAddressingPrefix, derivation: SelfAddressing) -> Self {
+        let version = SerializationInfo::new("ACDCOCA".to_string(), SerializationFormats::JSON, 0);
+        let digest = derivation.derive(&[]);
+        let mut acdc = Self {
+            version,
+            digest,
+            registry_identifier: "".to_string(),
             issuer: issuer.to_string(),
             schema,
             attrs: Attributes::Inline(HashMap::new()),
-            prov_chain: Vec::new(),
-            rules: Vec::new(),
-        }
+            // prov_chain: Vec::new(),
+            // rules: Vec::new(),
+        };
+        let acdc_len = acdc.encode().unwrap().len();
+        acdc.version.size = acdc_len;
+        let digest = derivation.derive(&acdc.encode().unwrap());
+        acdc.digest = digest;
+
+        acdc
     }
 }
 

@@ -1,7 +1,7 @@
 use std::{convert::TryInto, str::FromStr};
 
-#[cfg(feature = "keriox")]
-use keri::event_parsing::{attachment::attachment, Attachment};
+// #[cfg(feature = "keriox")]
+// use keri::event_parsing::{attachment::attachment, Attachment};
 #[cfg(feature = "keriox")]
 use keri::prefix::AttachedSignaturePrefix;
 
@@ -17,10 +17,11 @@ impl ToString for Signature {
         match self {
             Self::ED25519(sig) => format!("0B{}", base64::encode(sig.to_bytes())),
             #[cfg(feature = "keriox")]
-            Signature::KeriSignatures(sigs) => format!(
-                "0K{}",
-                Attachment::AttachedSignatures(sigs.to_owned()).to_cesr()
-            ),
+            Signature::KeriSignatures(sigs) => todo!()
+            //     format!(
+            //     "0K{}",
+            //     Attachment::AttachedSignatures(sigs.to_owned()).to_cesr()
+            // ),
         }
     }
 }
@@ -39,12 +40,13 @@ impl FromStr for Signature {
             ),
             #[cfg(feature = "keriox")]
             s if s.starts_with("0K") => {
-                let att = attachment(&s[2..].as_bytes());
-                if let Ok((_, Attachment::AttachedSignatures(sigs))) = att {
-                    Ok(Self::KeriSignatures(sigs))
-                } else {
-                    Err(ParseError::InvalidBytes)
-                }?
+                todo!()
+                // let att = attachment(&s[2..].as_bytes());
+                // if let Ok((_, Attachment::AttachedSignatures(sigs))) = att {
+                //     Ok(Self::KeriSignatures(sigs))
+                // } else {
+                //     Err(ParseError::InvalidBytes)
+                // }?
             }
             _ => return Err(ParseError::TypeUnknown),
         };

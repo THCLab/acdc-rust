@@ -10,11 +10,12 @@
 
 pub mod attestation;
 pub mod authored;
+pub mod error;
 pub mod hashed;
 pub mod signed;
 mod test;
 
-pub use attestation::{Attestation, Attributes, Version};
+pub use attestation::{Attestation, Attributes};
 pub use authored::Authored;
 pub use hashed::Hashed;
 pub use signed::{PubKey, Signed};
