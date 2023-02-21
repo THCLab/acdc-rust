@@ -1,14 +1,15 @@
 use std::{convert::TryInto, str::FromStr};
 
-// #[cfg(feature = "keriox")]
+// #[cfg(feature = "cesrox")]
 // use keri::event_parsing::{attachment::attachment, Attachment};
-#[cfg(feature = "keriox")]
+#[cfg(feature = "cesrox")]
 use keri::prefix::AttachedSignaturePrefix;
+use cesrox::primitives::Signature;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum Signature {
     ED25519(ed25519_dalek::Signature),
-    #[cfg(feature = "keriox")]
+    #[cfg(feature = "cesrox")]
     KeriSignatures(Vec<AttachedSignaturePrefix>),
 }
 
@@ -16,7 +17,7 @@ impl ToString for Signature {
     fn to_string(&self) -> String {
         match self {
             Self::ED25519(sig) => format!("0B{}", base64::encode(sig.to_bytes())),
-            #[cfg(feature = "keriox")]
+            #[cfg(feature = "cesrox")]
             Signature::KeriSignatures(sigs) => todo!()
             //     format!(
             //     "0K{}",
@@ -38,7 +39,7 @@ impl FromStr for Signature {
                     .try_into()
                     .map_err(|_| ParseError::InvalidBytes)?,
             ),
-            #[cfg(feature = "keriox")]
+            #[cfg(feature = "cesrox")]
             s if s.starts_with("0K") => {
                 todo!()
                 // let att = attachment(&s[2..].as_bytes());

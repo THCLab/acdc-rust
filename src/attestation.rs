@@ -4,6 +4,8 @@
 
 use std::collections::HashMap;
 
+#[cfg(feature = "cesrox")]
+use cesrox::payload::Payload;
 use sai::{derivation::SelfAddressing, SelfAddressingPrefix};
 use serde::{Deserialize, Serialize, Serializer};
 use version::serialization_info::{SerializationFormats, SerializationInfo};
@@ -114,7 +116,7 @@ impl Attestation {
 
     /// Creates a new attestation with given issuer and schema.
     #[must_use]
-    pub fn new(issuer: &str, schema: SelfAddressingPrefix, derivation: SelfAddressing) -> Self {
+    pub fn new(issuer: &str, schema: SelfAddressingPrefix, derivation: SelfAddressing, data: HashMap<String, String>) -> Self {
         let version = SerializationInfo::new("ACDCOCA".to_string(), SerializationFormats::JSON, 0);
         let digest = derivation.derive(&[]);
         let mut acdc = Self {
@@ -123,7 +125,7 @@ impl Attestation {
             registry_identifier: "".to_string(),
             issuer: issuer.to_string(),
             schema,
-            attrs: Attributes::Inline(HashMap::new()),
+            attrs: Attributes::Inline(data),
             // prov_chain: Vec::new(),
             // rules: Vec::new(),
         };
@@ -140,4 +142,34 @@ impl Authored for Attestation {
     fn get_author_id(&self) -> &str {
         &self.issuer
     }
+}
+
+#[cfg(feature = "cesrox")]
+impl From<Attestation> for Payload {
+    fn from(value: Attestation) -> Self {
+        match &value.version.kind {
+            SerializationFormats::JSON => Payload::JSON(value.encode().unwrap()),
+            SerializationFormats::MGPK => Payload::MGPK(value.encode().unwrap()),
+            SerializationFormats::CBOR => Payload::CBOR(value.encode().unwrap()),
+        }
+    }
+}
+
+#[test]
+pub fn test() -> Result<(), Error> {
+    let mut data = HashMap::new();
+    data.insert("greetings".to_string(), "hello".to_string());
+
+    let attestation = Attestation::new(
+        "issuer",
+        SelfAddressingPrefix::new(SelfAddressing::Blake3_256, vec![]),
+        SelfAddressing::Blake3_256,
+        data,
+    );
+    println!(
+        "att: {} ",
+        String::from_utf8((attestation.encode().unwrap())).unwrap()
+    );
+
+    Ok(())
 }

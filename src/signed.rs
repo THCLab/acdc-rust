@@ -1,11 +1,11 @@
 //! Type which contains its signature.
 
-mod pub_key;
-mod signature;
+// mod pub_key;
+// mod signature;
 
 use std::collections::HashMap;
 
-#[cfg(feature = "keriox")]
+#[cfg(feature = "cesrox")]
 use keri::prefix::AttachedSignaturePrefix;
 use serde::{Deserialize, Serialize};
 
@@ -107,9 +107,9 @@ where
         Ok(Self { data, sig })
     }
 
-    /// Create a new [Signed] instance with a `keriox` signature.
+    /// Create a new [Signed] instance with a `cesrox` signature.
     ///
-    #[cfg(feature = "keriox")]
+    #[cfg(feature = "cesrox")]
     pub fn new_with_keri_signatures(
         data: T,
         sig: &[AttachedSignaturePrefix],
@@ -188,7 +188,7 @@ where
                 key.verify(json.as_bytes(), sig)
                     .map_err(|_| VerifyError::SignatureInvalid)
             }
-            #[cfg(feature = "keriox")]
+            #[cfg(feature = "cesrox")]
             PubKey::KeriKeys(key_config) => {
                 if let signature::Signature::KeriSignatures(ks) = self.sig.clone() {
                     key_config
@@ -240,7 +240,7 @@ pub enum VerifyError {
     SignatureInvalid,
 }
 
-#[cfg(feature = "keriox")]
+#[cfg(feature = "cesrox")]
 #[test]
 fn test_parsing_keri_signatures() {
     use crate::{Attestation, Hashed};

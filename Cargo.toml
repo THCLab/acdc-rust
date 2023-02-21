@@ -8,7 +8,7 @@ authors = [
 edition = "2018"
 
 [features]
-keriox = ["keri"]
+cesr = ["cesrox"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -20,8 +20,8 @@ thiserror = "1.0"
 uriparse = "0.6.3"
 ed25519-dalek = "1.0.1"
 rand = "0.7.3"
-keri = { git = "https://github.com/THCLab/keriox.git" , optional = true, branch = "remove_sai_and_version" }
 version = { git = "https://github.com/THCLab/cesrox", branch = "add_workspaces" }
 sai = { git = "https://github.com/THCLab/cesrox", branch = "add_workspaces" }
+cesrox = { git = "https://github.com/THCLab/cesrox", optional = true }
 
 [dev-dependencies]
