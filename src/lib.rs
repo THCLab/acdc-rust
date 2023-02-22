@@ -11,11 +11,11 @@
 pub mod attestation;
 pub mod authored;
 pub mod error;
-pub mod hashed;
-// pub mod signed;
-// mod test;
+#[cfg(feature = "cesrox")]
+pub mod signed;
 
 pub use attestation::{Attestation, Attributes};
 pub use authored::Authored;
-pub use hashed::Hashed;
-// pub use signed::{PubKey, Signed};
+
+#[cfg(feature = "cesrox")]
+pub use signed::Signed;
