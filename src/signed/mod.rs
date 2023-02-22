@@ -2,96 +2,21 @@
 
 mod signature;
 
-use std::{collections::HashMap, str::FromStr, sync::Arc};
+use std::str::FromStr;
 
-use cesrox::{
-    group::Group, parse, parse_many, primitives::codes::self_signing::SelfSigning, ParsedData,
-};
+use cesrox::{group::Group, parse, payload::Payload, ParsedData};
 use keri::{
-    event::sections::KeyConfig,
     prefix::{IndexedSignature, SelfSigningPrefix},
     processor::event_storage::EventStorage,
 };
 use sai::SelfAddressingPrefix;
-use serde::{Deserialize, Serialize};
 
 use crate::{authored::Encode, error::Error, Attestation, Authored};
 
 use self::signature::Signature;
 
-/// Wraps a serializable type and provides methods to verify and convert to/from signed JSON string.
+/// Wraps a serializable type and provides methods to verify and convert CESR.
 ///
-/// # Examples
-///
-/// ## Serializing
-///
-/// ```
-/// # use std::collections::HashMap;
-/// use acdc::Signed;
-/// use ed25519_dalek::{Keypair, Signer};
-///
-/// // create some data
-/// let mut data: HashMap<String, String> = HashMap::new();
-/// data.insert("msg".to_string(), "hello".to_string());
-///
-/// // compute the signature of the data
-/// let mut rng = rand::rngs::OsRng {};
-/// let keypair = Keypair::generate(&mut rng);
-/// let sig = keypair.sign(&Signed::get_json_bytes(&data));
-///
-/// // create new signed instance with the data and the signature
-/// let data: Signed<HashMap<String, String>> =
-///     Signed::new_with_ed25519(data, &sig.to_bytes()).unwrap();
-///
-/// // serialize to signed json
-/// dbg!(data.to_signed_json()); // {"msg":"hello"}-SIGNATURE
-/// ```
-///
-/// ## Verifying
-///
-/// ```
-/// # use std::collections::HashMap;
-/// use acdc::{Authored, PubKey, Signed};
-/// use ed25519_dalek::{Keypair, Signer};
-/// use serde::{Serialize, Deserialize};
-///
-/// #[derive(Debug, Clone, Serialize, Deserialize)]
-/// struct Message {
-///     author: String,
-///     msg: String,
-/// }
-///
-/// impl Authored for Message {
-///     fn get_author_id(&self) -> &str {
-///         &self.author
-///     }
-/// }
-///
-/// // create some data
-/// let msg = Message {
-///     author: "alice".to_string(),
-///     msg: "hello".to_string(),
-/// };
-///
-/// // compute the signature of the data
-/// let mut rng = rand::rngs::OsRng {};
-/// let keypair = Keypair::generate(&mut rng);
-/// let sig = keypair.sign(&Signed::get_json_bytes(&msg));
-///
-/// // create new signed instance with the data and the signature
-/// let msg: Signed<Message> =
-///     Signed::new_with_ed25519(msg, &sig.to_bytes()).unwrap();
-///
-/// // initialize known public keys database
-/// let mut pub_keys = HashMap::new();
-/// pub_keys.insert(
-///     "alice".to_string(),
-///     PubKey::ED25519(keypair.public.to_bytes().to_vec()),
-/// );
-///
-/// // verify
-/// assert!(msg.verify(&pub_keys).is_ok());
-/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct Signed<T: Authored + Encode> {
     /// The signed data.
@@ -114,20 +39,23 @@ impl FromStr for Signed<Attestation> {
     type Err = DeserializeError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (rest, parsed) = parse(s.as_bytes()).unwrap();
+        let (_rest, parsed) = parse(s.as_bytes()).unwrap();
 
         let att = match parsed.payload {
-            cesrox::payload::Payload::JSON(json) => {
+            Payload::JSON(json) => {
                 println!("string: {}", String::from_utf8(json.clone()).unwrap());
                 serde_json::from_slice(&json).unwrap()
-            },
-            cesrox::payload::Payload::CBOR(cbor) => todo!(),
-            cesrox::payload::Payload::MGPK(mgpk) => todo!(),
+            }
+            Payload::CBOR(cbor) => todo!(),
+            Payload::MGPK(mgpk) => todo!(),
         };
         let sig = if let Group::SourceSealCouples(seals) = &parsed.attachments[0] {
             let (sn, (code, digest)) = &seals[0];
             if let Group::IndexedControllerSignatures(sigs) = &parsed.attachments[1] {
-                let dig = SelfAddressingPrefix { derivation: code.clone().into(), digest: digest.clone() };
+                let dig = SelfAddressingPrefix {
+                    derivation: code.clone().into(),
+                    digest: digest.clone(),
+                };
                 Signature::Transferable(*sn, dig, sigs[0].clone().into())
             } else {
                 todo!()
@@ -142,9 +70,6 @@ impl FromStr for Signed<Attestation> {
 
 impl<T: Authored + Encode> Signed<T> {
     /// Verify signature.
-    ///
-    /// # Panics
-    /// Panics if T's implementation of Serialize decides to fail.
     ///
     /// # Errors
     /// Returns error when the verification fails.
@@ -230,7 +155,7 @@ pub mod test {
     use crate::{
         error::Error,
         signed::{signature::Signature, VerifyError},
-        Attestation, Signed,
+        Attestation, Attributes, Signed,
     };
 
     #[async_std::test]
@@ -268,6 +193,7 @@ pub mod test {
         // Make attestation
         let mut data = HashMap::new();
         data.insert("greetings".to_string(), "hello".to_string());
+        let attributes = Attributes::Inline(data);
         let schema_id = SelfAddressing::Blake3_256.derive("schema id".as_bytes());
         let issuer_id = state.prefix;
 
@@ -275,7 +201,7 @@ pub mod test {
             &issuer_id.to_str(),
             schema_id,
             SelfAddressing::Blake3_256,
-            data,
+            attributes,
         );
 
         // Data needed for signature

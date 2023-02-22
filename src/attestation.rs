@@ -111,7 +111,7 @@ impl Attestation {
         issuer: &str,
         schema: SelfAddressingPrefix,
         derivation: SelfAddressing,
-        data: HashMap<String, String>,
+        attr: Attributes,
     ) -> Self {
         let mut acdc = Self::dummy_attestation(
             SerializationFormats::JSON,
@@ -119,7 +119,7 @@ impl Attestation {
             "".to_string(),
             issuer.to_string(),
             schema,
-            Attributes::Inline(data),
+            attr,
         );
 
         // Update encoded size
@@ -157,12 +157,13 @@ impl From<Attestation> for Payload {
 pub fn test_new_attestation() -> Result<(), Error> {
     let mut data = HashMap::new();
     data.insert("greetings".to_string(), "hello".to_string());
+    let attributes = Attributes::Inline(data);
 
     let attestation = Attestation::new(
         "issuer",
         SelfAddressing::Blake3_256.derive(&[0; 30]),
         SelfAddressing::Blake3_256,
-        data,
+        attributes,
     );
     assert_eq!(
         &attestation.encode().unwrap().len(),
