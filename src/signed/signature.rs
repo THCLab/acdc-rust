@@ -1,10 +1,13 @@
 use cesrox::{group::Group, primitives::IndexedSignature};
+use keri::prefix::{BasicPrefix, SelfSigningPrefix};
 use sai::SelfAddressingPrefix;
+
+use crate::error::Error;
 
 #[derive(Debug, Clone, PartialEq)]
 pub(super) enum Signature {
     Transferable(u64, SelfAddressingPrefix, IndexedSignature),
-    NonTransferable(String, String),
+    NonTransferable(BasicPrefix, SelfSigningPrefix),
 }
 
 impl Signature {
@@ -16,8 +19,34 @@ impl Signature {
                     Group::IndexedControllerSignatures(vec![sig.clone()]),
                 ]
             }
-            Signature::NonTransferable(_, _) => todo!(),
+            Signature::NonTransferable(bp, ssp) => vec![Group::NontransReceiptCouples(vec![(
+                (bp.clone()).into(),
+                (ssp.clone()).into(),
+            )])],
         }
+    }
+
+    pub fn from_attachment(groups: impl IntoIterator<Item = Group>) -> Result<Signature, Error> {
+        let mut group_iterator = groups.into_iter();
+        Ok(match group_iterator.next().ok_or(Error::SomeError("empty groups".into()))? {
+            Group::NontransReceiptCouples(couplet) => {
+                couplet
+                    .iter()
+                    .map(|(key, sig)| Signature::NonTransferable(key.clone().into(), sig.clone().into()))
+                    .collect::<Vec<_>>()
+                    [0]
+                    .clone()
+            },
+            Group::SourceSealCouples(seals) => {
+                let sigs = group_iterator.next().ok_or(Error::SomeError("empty groups".into()))?;
+                if let Group::IndexedControllerSignatures(sigs) = sigs {
+                    Signature::Transferable(seals[0].0, seals[0].clone().1.into(), sigs[0].clone())
+                } else {
+                    return Err(Error::SomeError("Unexpected attachment".into()))
+                }
+            },
+            _ => return Err(Error::SomeError("Unexpected attachment".into()))
+        })
     }
 }
 

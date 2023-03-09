@@ -43,7 +43,6 @@ impl FromStr for Signed<Attestation> {
 
         let att = match parsed.payload {
             Payload::JSON(json) => {
-                println!("string: {}", String::from_utf8(json.clone()).unwrap());
                 serde_json::from_slice(&json).unwrap()
             }
             Payload::CBOR(cbor) => todo!(),
@@ -95,7 +94,11 @@ impl<T: Authored + Encode> Signed<T> {
                     .then_some(())
                     .ok_or(VerifyError::SignatureInvalid)
             }
-            signature::Signature::NonTransferable(_, _) => todo!(),
+            signature::Signature::NonTransferable(bp, ssp) => bp
+                .verify(&self.data.encode().unwrap(), ssp)
+                .unwrap()
+                .then_some(())
+                .ok_or(VerifyError::SignatureInvalid),
         }
     }
 }
