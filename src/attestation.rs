@@ -4,13 +4,11 @@
 
 use std::collections::HashMap;
 
-#[cfg(feature = "cesrox")]
-use cesrox::payload::Payload;
 use sai::{derivation::SelfAddressing, SelfAddressingPrefix};
 use serde::{Deserialize, Serialize, Serializer};
 use version::serialization_info::{SerializationFormats, SerializationInfo};
 
-use crate::{authored::Encode, error::Error, Authored};
+use crate::{error::Error, Authored};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Attestation {
@@ -133,23 +131,6 @@ impl Attestation {
 impl Authored for Attestation {
     fn get_author_id(&self) -> &str {
         &self.issuer
-    }
-}
-
-impl Encode for Attestation {
-    fn encode(&self) -> Result<Vec<u8>, Error> {
-        self.encode()
-    }
-}
-
-#[cfg(feature = "cesrox")]
-impl From<Attestation> for Payload {
-    fn from(value: Attestation) -> Self {
-        match &value.version.kind {
-            SerializationFormats::JSON => Payload::JSON(value.encode().unwrap()),
-            SerializationFormats::MGPK => Payload::MGPK(value.encode().unwrap()),
-            SerializationFormats::CBOR => Payload::CBOR(value.encode().unwrap()),
-        }
     }
 }
 

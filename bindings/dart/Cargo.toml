@@ -1,0 +1,22 @@
+[package]
+name = "dart"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "acdcdart"
+crate-type = ["dylib"]
+
+[profile.release]
+strip = true
+opt-level = "z"
+lto = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+flutter_rust_bridge = "1.70.0"
+acdc = {path = "../../../acdc-rust"}
+serde_json = "1.0.93"
+sai = { git = "https://github.com/THCLab/cesrox" }
+anyhow = "1.0.69"
