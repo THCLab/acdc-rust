@@ -18,9 +18,8 @@ thiserror = "1.0"
 uriparse = "0.6.3"
 ed25519-dalek = "1.0.1"
 version = { git = "https://github.com/THCLab/cesrox" }
-sai = { git = "https://github.com/THCLab/cesrox" }
+said = { git = "https://github.com/THCLab/cesrox" }
 
 [dev-dependencies]
-controller = { git = "https://github.com/THCLab/keriox", branch = "signing" }
 tempfile = { version = "3.1" }
 async-std = { version = "1.12.0", features = ["attributes"] }

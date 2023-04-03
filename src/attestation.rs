@@ -4,7 +4,7 @@
 
 use std::collections::HashMap;
 
-use sai::{derivation::SelfAddressing, SelfAddressingPrefix};
+use said::{derivation::HashFunction, derivation::HashFunctionCode, SelfAddressingIdentifier};
 use serde::{Deserialize, Serialize, Serializer};
 use version::serialization_info::{SerializationFormats, SerializationInfo};
 
@@ -18,7 +18,7 @@ pub struct Attestation {
 
     /// Digest of attestaion
     #[serde(rename = "d", serialize_with = "dummy_serialize")]
-    pub digest: SelfAddressingPrefix,
+    pub digest: SelfAddressingIdentifier,
 
     /// Attributable source identifier (Issuer, Testator).
     #[serde(rename = "i")]
@@ -31,7 +31,7 @@ pub struct Attestation {
 
     /// Schema SAID.
     #[serde(rename = "s")]
-    pub schema: SelfAddressingPrefix,
+    pub schema: String,
 
     /// Attributes.
     #[serde(rename = "a")]
@@ -45,7 +45,7 @@ pub struct Attestation {
     // pub rules: Vec<serde_json::Value>,
 }
 
-fn dummy_serialize<S>(x: &SelfAddressingPrefix, s: S) -> Result<S::Ok, S::Error>
+fn dummy_serialize<S>(x: &SelfAddressingIdentifier, s: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
@@ -63,8 +63,8 @@ where
 pub enum Attributes {
     /// Inlined attributes as a JSON object.
     Inline(HashMap<String, String>),
-    /// External attributes identified by their [`SelfAddressingPrefix`].
-    External(SelfAddressingPrefix),
+    /// External attributes identified by their [`SelfAddressingIdentifier`].
+    External(SelfAddressingIdentifier),
 }
 
 impl Attestation {
@@ -78,10 +78,10 @@ impl Attestation {
     /// string during serialization. It is used to compute proper digest later.
     fn dummy_attestation(
         serialization_format: SerializationFormats,
-        derivation_type: SelfAddressing,
+        derivation_type: HashFunction,
         registry_id: String,
         issuer_id: String,
-        schema_sai: SelfAddressingPrefix,
+        schema_sai: String,
         attributes: Attributes,
     ) -> Self {
         // Digest is initially setup as digest of empty data, to save derivation type.
@@ -92,7 +92,7 @@ impl Attestation {
             digest,
             registry_identifier: registry_id,
             issuer: issuer_id,
-            schema: schema_sai,
+            schema: schema_sai.to_string(),
             attrs: attributes,
             // prov_chain: Vec::new(),
             // rules: Vec::new(),
@@ -107,16 +107,16 @@ impl Attestation {
     #[must_use]
     pub fn new(
         issuer: &str,
-        schema: SelfAddressingPrefix,
-        derivation: SelfAddressing,
+        schema: String,
+        derivation: HashFunction,
         attr: Attributes,
     ) -> Self {
         let mut acdc = Self::dummy_attestation(
             SerializationFormats::JSON,
-            SelfAddressing::Blake3_256,
+            HashFunction::from(HashFunctionCode::Blake3_256),
             "".to_string(),
             issuer.to_string(),
-            schema,
+            schema.to_string(),
             attr,
         );
 
@@ -142,8 +142,8 @@ pub fn test_new_attestation() -> Result<(), Error> {
 
     let attestation = Attestation::new(
         "issuer",
-        SelfAddressing::Blake3_256.derive(&[0; 30]),
-        SelfAddressing::Blake3_256,
+        HashFunction::from(HashFunctionCode::Blake3_256).derive(&[0; 30]).to_string(),
+        HashFunction::from(HashFunctionCode::Blake3_256),
         attributes,
     );
     assert_eq!(
@@ -153,7 +153,7 @@ pub fn test_new_attestation() -> Result<(), Error> {
 
     let digest = attestation.digest.clone();
     let dummy = Attestation {
-        digest: SelfAddressing::Blake3_256.derive(&[]),
+        digest: HashFunction::from(HashFunctionCode::Blake3_256).derive(&[]),
         ..attestation.clone()
     };
     assert_eq!(dummy.version, attestation.version);

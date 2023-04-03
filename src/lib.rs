@@ -12,8 +12,5 @@ pub mod attestation;
 pub mod authored;
 pub mod error;
 
-#[cfg(test)]
-pub mod keri_tests;
-
 pub use attestation::{Attestation, Attributes};
 pub use authored::Authored;
