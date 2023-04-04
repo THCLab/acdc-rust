@@ -5,16 +5,12 @@
 //! For usage see: [`Attestation`]
 
 #![warn(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(missing_docs)]
+// #![warn(clippy::pedantic)]
+// #![warn(missing_docs)]
 
 pub mod attestation;
 pub mod authored;
-pub mod hashed;
-pub mod signed;
-mod test;
+pub mod error;
 
-pub use attestation::{Attestation, Attributes, Version};
+pub use attestation::{Attestation, Attributes};
 pub use authored::Authored;
-pub use hashed::Hashed;
-pub use signed::{PubKey, Signed};
