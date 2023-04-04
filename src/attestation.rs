@@ -105,12 +105,7 @@ impl Attestation {
 
     /// Creates a new attestation.
     #[must_use]
-    pub fn new(
-        issuer: &str,
-        schema: String,
-        derivation: HashFunction,
-        attr: Attributes,
-    ) -> Self {
+    pub fn new(issuer: &str, schema: String, derivation: HashFunction, attr: Attributes) -> Self {
         let mut acdc = Self::dummy_attestation(
             SerializationFormats::JSON,
             HashFunction::from(HashFunctionCode::Blake3_256),
@@ -142,7 +137,9 @@ pub fn test_new_attestation() -> Result<(), Error> {
 
     let attestation = Attestation::new(
         "issuer",
-        HashFunction::from(HashFunctionCode::Blake3_256).derive(&[0; 30]).to_string(),
+        HashFunction::from(HashFunctionCode::Blake3_256)
+            .derive(&[0; 30])
+            .to_string(),
         HashFunction::from(HashFunctionCode::Blake3_256),
         attributes,
     );
