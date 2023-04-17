@@ -2,8 +2,7 @@
 //!
 //! See: [`Attestation`]
 
-use std::collections::HashMap;
-
+use indexmap::IndexMap;
 use said::{derivation::HashFunction, derivation::HashFunctionCode, SelfAddressingIdentifier};
 use serde::{Deserialize, Serialize, Serializer};
 use version::serialization_info::{SerializationFormats, SerializationInfo};
@@ -62,7 +61,7 @@ where
 #[serde(untagged)]
 pub enum Attributes {
     /// Inlined attributes as a JSON object.
-    Inline(HashMap<String, String>),
+    Inline(IndexMap<String, String>),
     /// External attributes identified by their [`SelfAddressingIdentifier`].
     External(SelfAddressingIdentifier),
 }
@@ -131,8 +130,8 @@ impl Authored for Attestation {
 
 #[test]
 pub fn test_new_attestation() -> Result<(), Error> {
-    let mut data = HashMap::new();
-    data.insert("greetings".to_string(), "hello".to_string());
+    let mut data = IndexMap::new();
+    data.insert("greetings".to_string(), "Hello".to_string());
     let attributes = Attributes::Inline(data);
 
     let attestation = Attestation::new(
@@ -159,6 +158,32 @@ pub fn test_new_attestation() -> Result<(), Error> {
     assert_eq!(dummy.attrs, attestation.attrs);
     assert_ne!(dummy.digest, attestation.digest);
     assert!(digest.verify_binding(&dummy.encode().unwrap()));
+
+    Ok(())
+}
+
+#[test]
+pub fn test_attributes_order() -> Result<(), Error> {
+    let mut data = IndexMap::new();
+    data.insert("name".to_string(), "Hella".to_string());
+    data.insert("species".to_string(), "cat".to_string());
+    data.insert("health".to_string(), "great".to_string());
+    let attributes = Attributes::Inline(data);
+
+    let attestation = Attestation::new(
+        "issuer",
+        HashFunction::from(HashFunctionCode::Blake3_256)
+            .derive(&[0; 30])
+            .to_string(),
+        HashFunction::from(HashFunctionCode::Blake3_256),
+        attributes,
+    );
+    let encoded = attestation.encode().unwrap();
+    let deserialized_attestation: Attestation = serde_json::from_slice(&encoded).unwrap();
+    assert_eq!(
+        &attestation.encode().unwrap(),
+        &deserialized_attestation.encode().unwrap()
+    );
 
     Ok(())
 }
