@@ -3,21 +3,27 @@
 //! See: [`Attestation`]
 
 use indexmap::IndexMap;
-use said::{derivation::HashFunction, derivation::HashFunctionCode, SelfAddressingIdentifier};
-use serde::{Deserialize, Serialize, Serializer};
+use said::{
+    derivation::HashFunction,
+    derivation::HashFunctionCode,
+    sad::{sad_macros::SAD, SAD},
+    SelfAddressingIdentifier,
+};
+use serde::{Deserialize, Serialize};
 use version::serialization_info::{SerializationFormats, SerializationInfo};
 
 use crate::{error::Error, Authored};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SAD)]
 pub struct Attestation {
     /// Version string of ACDC.
     #[serde(rename = "v")]
     pub version: SerializationInfo,
 
-    /// Digest of attestaion
-    #[serde(rename = "d", serialize_with = "dummy_serialize")]
-    pub digest: SelfAddressingIdentifier,
+    /// Digest of attestation
+    #[said]
+    #[serde(rename = "d")]
+    pub digest: Option<SelfAddressingIdentifier>,
 
     /// Attributable source identifier (Issuer, Testator).
     #[serde(rename = "i")]
@@ -44,18 +50,6 @@ pub struct Attestation {
     // pub rules: Vec<serde_json::Value>,
 }
 
-fn dummy_serialize<S>(x: &SelfAddressingIdentifier, s: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-{
-    if x.eq(&x.derivation.derive(&[])) {
-        let dummy = "#".repeat(x.derivation.get_len());
-        s.serialize_str(&dummy)
-    } else {
-        x.serialize(s)
-    }
-}
-
 /// Attestation attributes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
@@ -73,22 +67,19 @@ impl Attestation {
         Ok(self.version.kind.encode(self)?)
     }
 
-    /// Creates attestation with default digest field, that is replaced by dummy
-    /// string during serialization. It is used to compute proper digest later.
-    fn dummy_attestation(
+    /// Creates attestation with default digest field and set version field.
+    fn compute_version(
         serialization_format: SerializationFormats,
-        derivation_type: HashFunction,
+        derivation_type: &HashFunctionCode,
         registry_id: String,
         issuer_id: String,
         schema_sai: String,
         attributes: Attributes,
     ) -> Self {
-        // Digest is initially setup as digest of empty data, to save derivation type.
-        let digest = derivation_type.derive(&[]);
         let version = SerializationInfo::new("ACDC".to_string(), serialization_format, 0);
         let mut att = Self {
             version,
-            digest,
+            digest: None,
             registry_identifier: registry_id,
             issuer: issuer_id,
             schema: schema_sai.to_string(),
@@ -97,7 +88,9 @@ impl Attestation {
             // rules: Vec::new(),
         };
         // Update encoded len. It was set to 0 before.
-        let acdc_len = att.encode().unwrap().len();
+        let acdc_len = att
+            .derivation_data(derivation_type, &serialization_format)
+            .len();
         att.version.size = acdc_len;
         att
     }
@@ -105,20 +98,18 @@ impl Attestation {
     /// Creates a new attestation.
     #[must_use]
     pub fn new(issuer: &str, schema: String, derivation: HashFunction, attr: Attributes) -> Self {
-        let mut acdc = Self::dummy_attestation(
-            SerializationFormats::JSON,
-            HashFunction::from(HashFunctionCode::Blake3_256),
+        let hash_function_code = derivation.into();
+        let serialization_format = SerializationFormats::JSON;
+        let acdc = Self::compute_version(
+            serialization_format,
+            &hash_function_code,
             "".to_string(),
             issuer.to_string(),
             schema.to_string(),
             attr,
         );
-
-        // Update encoded size
-        let digest = derivation.derive(&acdc.encode().unwrap());
-        acdc.digest = digest;
-
-        acdc
+        // Compute digest and replace `d` field with SAID.
+        acdc.compute_digest(hash_function_code, serialization_format)
     }
 }
 
@@ -147,17 +138,10 @@ pub fn test_new_attestation() -> Result<(), Error> {
         &attestation.version.size
     );
 
-    let digest = attestation.digest.clone();
-    let dummy = Attestation {
-        digest: HashFunction::from(HashFunctionCode::Blake3_256).derive(&[]),
-        ..attestation.clone()
-    };
-    assert_eq!(dummy.version, attestation.version);
-    assert_eq!(dummy.issuer, attestation.issuer);
-    assert_eq!(dummy.schema, attestation.schema);
-    assert_eq!(dummy.attrs, attestation.attrs);
-    assert_ne!(dummy.digest, attestation.digest);
-    assert!(digest.verify_binding(&dummy.encode().unwrap()));
+    let digest = attestation.digest.clone().unwrap();
+    let derivation_data =
+        attestation.derivation_data(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
+    assert!(digest.verify_binding(&derivation_data));
 
     Ok(())
 }
