@@ -49,15 +49,32 @@ pub struct Attestation {
     // #[serde(rename = "r")]
     // pub rules: Vec<serde_json::Value>,
 }
+pub struct InlineAttributes(IndexMap<String, serde_json::Value>);
 
 /// Attestation attributes.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Attributes {
     /// Inlined attributes as a JSON object.
-    Inline(IndexMap<String, String>),
+    Inline(IndexMap<String, serde_json::Value>),
     /// External attributes identified by their [`SelfAddressingIdentifier`].
     External(SelfAddressingIdentifier),
+}
+
+impl InlineAttributes {
+    pub fn new() -> Self {
+        InlineAttributes(IndexMap::new())
+    }
+
+    pub fn insert(&mut self, key: String, value: serde_json::Value) {
+        self.0.insert(key, value);
+    }
+}
+
+impl Attributes {
+    pub fn new_inline(attributes: InlineAttributes) -> Self {
+        Attributes::Inline(attributes.0)
+    }
 }
 
 impl Attestation {
@@ -121,9 +138,9 @@ impl Authored for Attestation {
 
 #[test]
 pub fn test_new_attestation() -> Result<(), Error> {
-    let mut data = IndexMap::new();
-    data.insert("greetings".to_string(), "Hello".to_string());
-    let attributes = Attributes::Inline(data);
+    let mut data = InlineAttributes::new();
+    data.insert("greetings".to_string(), "Hello".into());
+    let attributes = Attributes::new_inline(data);
 
     let attestation = Attestation::new(
         "issuer",
@@ -148,11 +165,11 @@ pub fn test_new_attestation() -> Result<(), Error> {
 
 #[test]
 pub fn test_attributes_order() -> Result<(), Error> {
-    let mut data = IndexMap::new();
-    data.insert("name".to_string(), "Hella".to_string());
-    data.insert("species".to_string(), "cat".to_string());
-    data.insert("health".to_string(), "great".to_string());
-    let attributes = Attributes::Inline(data);
+    let mut data = InlineAttributes::new();
+    data.insert("name".to_string(), "Hella".into());
+    data.insert("species".to_string(), "cat".into());
+    data.insert("health".to_string(), "great".into());
+    let attributes = Attributes::new_inline(data);
 
     let attestation = Attestation::new(
         "issuer",
