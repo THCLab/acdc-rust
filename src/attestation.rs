@@ -3,23 +3,16 @@
 //! See: [`Attestation`]
 
 use indexmap::IndexMap;
-use said::{
-    derivation::HashFunction,
-    derivation::HashFunctionCode,
-    sad::{sad_macros::SAD, SAD},
-    SelfAddressingIdentifier,
-};
+use said::version::{format::SerializationFormats, SerializationInfo};
+use said::{sad::SAD, SelfAddressingIdentifier};
 use serde::{Deserialize, Serialize};
-use version::serialization_info::{SerializationFormats, SerializationInfo};
 
-use crate::{error::Error, Authored};
+use crate::Authored;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SAD)]
+#[version(protocol = "KERI", major = 1, minor = 0)]
+#[said(code = "E", format = "JSON")]
 pub struct Attestation {
-    /// Version string of ACDC.
-    #[serde(rename = "v")]
-    pub version: SerializationInfo,
-
     /// Digest of attestation
     #[said]
     #[serde(rename = "d")]
@@ -78,55 +71,21 @@ impl Attributes {
 }
 
 impl Attestation {
-    /// Encodes attestation according to serialization type specified by version
-    /// string: JSON, CBOR or MGPK.
-    pub fn encode(&self) -> Result<Vec<u8>, Error> {
-        Ok(self.version.kind.encode(self)?)
-    }
-
-    /// Creates attestation with default digest field and set version field.
-    fn compute_version(
-        serialization_format: SerializationFormats,
-        derivation_type: &HashFunctionCode,
-        registry_id: String,
-        issuer_id: String,
-        schema_sai: String,
-        attributes: Attributes,
-    ) -> Self {
-        let version = SerializationInfo::new("ACDC".to_string(), serialization_format, 0);
-        let mut att = Self {
-            version,
+    /// Creates a new attestation.
+    #[must_use]
+    pub fn new(issuer: &str, schema: String, attr: Attributes) -> Self {
+        let mut acdc = Self {
             digest: None,
-            registry_identifier: registry_id,
-            issuer: issuer_id,
-            schema: schema_sai.to_string(),
-            attrs: attributes,
+            registry_identifier: "".to_string(),
+            issuer: issuer.to_string(),
+            schema,
+            attrs: attr,
             // prov_chain: Vec::new(),
             // rules: Vec::new(),
         };
-        // Update encoded len. It was set to 0 before.
-        let acdc_len = att
-            .derivation_data(derivation_type, &serialization_format)
-            .len();
-        att.version.size = acdc_len;
-        att
-    }
-
-    /// Creates a new attestation.
-    #[must_use]
-    pub fn new(issuer: &str, schema: String, derivation: HashFunction, attr: Attributes) -> Self {
-        let hash_function_code = derivation.into();
-        let serialization_format = SerializationFormats::JSON;
-        let acdc = Self::compute_version(
-            serialization_format,
-            &hash_function_code,
-            "".to_string(),
-            issuer.to_string(),
-            schema.to_string(),
-            attr,
-        );
         // Compute digest and replace `d` field with SAID.
-        acdc.compute_digest(hash_function_code, serialization_format)
+        acdc.compute_digest();
+        acdc
     }
 }
 
@@ -136,55 +95,58 @@ impl Authored for Attestation {
     }
 }
 
-#[test]
-pub fn test_new_attestation() -> Result<(), Error> {
-    let mut data = InlineAttributes::new();
-    data.insert("greetings".to_string(), "Hello".into());
-    let attributes = Attributes::new_inline(data);
+#[cfg(test)]
+mod tests {
+    use said::{
+        derivation::{HashFunction, HashFunctionCode},
+        sad::SAD,
+        version::Encode,
+    };
 
-    let attestation = Attestation::new(
-        "issuer",
-        HashFunction::from(HashFunctionCode::Blake3_256)
-            .derive(&[0; 30])
-            .to_string(),
-        HashFunction::from(HashFunctionCode::Blake3_256),
-        attributes,
-    );
-    assert_eq!(
-        &attestation.encode().unwrap().len(),
-        &attestation.version.size
-    );
+    use crate::{attestation::InlineAttributes, error::Error, Attestation, Attributes};
+    #[test]
+    pub fn test_new_attestation() -> Result<(), Error> {
+        let mut data = InlineAttributes::new();
+        data.insert("greetings".to_string(), "Hello".into());
+        let attributes = Attributes::new_inline(data);
 
-    let digest = attestation.digest.clone().unwrap();
-    let derivation_data =
-        attestation.derivation_data(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
-    assert!(digest.verify_binding(&derivation_data));
+        let attestation = Attestation::new(
+            "issuer",
+            HashFunction::from(HashFunctionCode::Blake3_256)
+                .derive(&[0; 30])
+                .to_string(),
+            attributes,
+        );
 
-    Ok(())
-}
+        let digest = attestation.digest.clone().unwrap();
+        let derivation_data = attestation.derivation_data();
+        assert!(digest.verify_binding(&derivation_data));
 
-#[test]
-pub fn test_attributes_order() -> Result<(), Error> {
-    let mut data = InlineAttributes::new();
-    data.insert("name".to_string(), "Hella".into());
-    data.insert("species".to_string(), "cat".into());
-    data.insert("health".to_string(), "great".into());
-    let attributes = Attributes::new_inline(data);
+        Ok(())
+    }
 
-    let attestation = Attestation::new(
-        "issuer",
-        HashFunction::from(HashFunctionCode::Blake3_256)
-            .derive(&[0; 30])
-            .to_string(),
-        HashFunction::from(HashFunctionCode::Blake3_256),
-        attributes,
-    );
-    let encoded = attestation.encode().unwrap();
-    let deserialized_attestation: Attestation = serde_json::from_slice(&encoded).unwrap();
-    assert_eq!(
-        &attestation.encode().unwrap(),
-        &deserialized_attestation.encode().unwrap()
-    );
+    #[test]
+    pub fn test_attributes_order() -> Result<(), Error> {
+        let mut data = InlineAttributes::new();
+        data.insert("name".to_string(), "Hella".into());
+        data.insert("species".to_string(), "cat".into());
+        data.insert("health".to_string(), "great".into());
+        let attributes = Attributes::new_inline(data);
 
-    Ok(())
+        let attestation = Attestation::new(
+            "issuer",
+            HashFunction::from(HashFunctionCode::Blake3_256)
+                .derive(&[0; 30])
+                .to_string(),
+            attributes,
+        );
+        let encoded = attestation.encode().unwrap();
+        let deserialized_attestation: Attestation = serde_json::from_slice(&encoded).unwrap();
+        assert_eq!(
+            &attestation.encode().unwrap(),
+            &deserialized_attestation.encode().unwrap()
+        );
+
+        Ok(())
+    }
 }
