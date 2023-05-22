@@ -64,6 +64,12 @@ impl InlineAttributes {
     }
 }
 
+impl Default for InlineAttributes {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Attributes {
     pub fn new_inline(attributes: InlineAttributes) -> Self {
         Attributes::Inline(attributes.0)
