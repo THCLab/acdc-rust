@@ -6,6 +6,7 @@ use said::version::{format::SerializationFormats, SerializationInfo};
 use said::{sad::SAD, SelfAddressingIdentifier};
 use serde::{Deserialize, Serialize};
 
+use crate::attributes::InlineAttributes;
 use crate::{Authored, Attributes};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SAD)]
@@ -59,6 +60,36 @@ impl Attestation {
         acdc.compute_digest();
         acdc
     }
+
+    pub fn new_public_targeted(issuer: &str, target_id: &str, schema: String, attr: InlineAttributes) -> Self {
+        let mut acdc = Self {
+            digest: None,
+            registry_identifier: "".to_string(),
+            issuer: issuer.to_string(),
+            schema,
+            attrs: attr.to_targeted_public_block(target_id.to_string()),
+            // prov_chain: Vec::new(),
+            // rules: Vec::new(),
+        };
+        // Compute digest and replace `d` field with SAID.
+        acdc.compute_digest();
+        acdc
+    }
+
+     pub fn new_public_untargeted(issuer: &str, schema: String, attr: InlineAttributes) -> Self {
+        let mut acdc = Self {
+            digest: None,
+            registry_identifier: "".to_string(),
+            issuer: issuer.to_string(),
+            schema,
+            attrs: attr.to_untargeted_public_block(),
+            // prov_chain: Vec::new(),
+            // rules: Vec::new(),
+        };
+        // Compute digest and replace `d` field with SAID.
+        acdc.compute_digest();
+        acdc
+    }
 }
 
 impl Authored for Attestation {
@@ -75,14 +106,35 @@ mod tests {
         version::Encode,
     };
 
-    use crate::{error::Error, Attestation, Attributes, attributes::InlineAttributes};
+    use crate::{error::Error, Attestation, Attributes, attributes::{AttributesBlock, InlineAttributes}};
     #[test]
-    pub fn test_new_attestation() -> Result<(), Error> {
-        let mut data = InlineAttributes::new();
-        data.insert("greetings".to_string(), "Hello".into());
-        let attributes = Attributes::new_inline(data);
+    pub fn test_new_targeted_public_attestation() -> Result<(), Error> {
+        let mut attributes = InlineAttributes::default();
+        attributes.insert("greetings".to_string(), "Hello".into());
 
-        let attestation = Attestation::new(
+        let attestation = Attestation::new_public_targeted(
+            "issuer",
+            "target",
+            HashFunction::from(HashFunctionCode::Blake3_256)
+                .derive(&[0; 30])
+                .to_string(),
+            attributes,
+        );
+
+        let digest = attestation.digest.clone().unwrap();
+        let derivation_data = attestation.derivation_data();
+        assert!(digest.verify_binding(&derivation_data));
+        println!("{}", String::from_utf8(attestation.encode().unwrap()).unwrap());
+
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_new_untargeted_public_attestation() -> Result<(), Error> {
+        let mut attributes = InlineAttributes::default();
+        attributes.insert("greetings".to_string(), "Hello".into());
+
+        let attestation = Attestation::new_public_untargeted(
             "issuer",
             HashFunction::from(HashFunctionCode::Blake3_256)
                 .derive(&[0; 30])
@@ -93,17 +145,18 @@ mod tests {
         let digest = attestation.digest.clone().unwrap();
         let derivation_data = attestation.derivation_data();
         assert!(digest.verify_binding(&derivation_data));
+        println!("{}", String::from_utf8(attestation.encode().unwrap()).unwrap());
 
         Ok(())
     }
 
     #[test]
     pub fn test_attributes_order() -> Result<(), Error> {
-        let mut data = InlineAttributes::new();
+        let mut data = InlineAttributes::default();
         data.insert("name".to_string(), "Hella".into());
         data.insert("species".to_string(), "cat".into());
         data.insert("health".to_string(), "great".into());
-        let attributes = Attributes::new_inline(data);
+        let attributes =data.to_untargeted_public_block();
 
         let attestation = Attestation::new(
             "issuer",
