@@ -9,10 +9,10 @@
 // #![warn(missing_docs)]
 
 pub mod attestation;
+pub mod attributes;
 pub mod authored;
 pub mod error;
-pub mod attributes;
 
-pub use attestation::{Attestation};
-pub use attributes::{Attributes};
+pub use attestation::Attestation;
+pub use attributes::Attributes;
 pub use authored::Authored;

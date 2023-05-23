@@ -4,4 +4,7 @@ use thiserror::Error;
 pub enum Error {
     #[error("Version error")]
     VersionError(#[from] said::error::Error),
+
+    #[error("Parse error")]
+    ParseError,
 }
