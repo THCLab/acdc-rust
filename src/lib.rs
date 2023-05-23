@@ -11,6 +11,8 @@
 pub mod attestation;
 pub mod authored;
 pub mod error;
+pub mod attributes;
 
-pub use attestation::{Attestation, Attributes};
+pub use attestation::{Attestation};
+pub use attributes::{Attributes};
 pub use authored::Authored;

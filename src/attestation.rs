@@ -2,15 +2,14 @@
 //!
 //! See: [`Attestation`]
 
-use indexmap::IndexMap;
 use said::version::{format::SerializationFormats, SerializationInfo};
 use said::{sad::SAD, SelfAddressingIdentifier};
 use serde::{Deserialize, Serialize};
 
-use crate::Authored;
+use crate::{Authored, Attributes};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SAD)]
-#[version(protocol = "KERI", major = 1, minor = 0)]
+#[version(protocol = "ACDC", major = 1, minor = 0)]
 #[said(code = "E", format = "JSON")]
 pub struct Attestation {
     /// Digest of attestation
@@ -41,39 +40,6 @@ pub struct Attestation {
     // /// Rules rules/delegation/consent/license/data agreement under which data are shared.
     // #[serde(rename = "r")]
     // pub rules: Vec<serde_json::Value>,
-}
-pub struct InlineAttributes(IndexMap<String, serde_json::Value>);
-
-/// Attestation attributes.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum Attributes {
-    /// Inlined attributes as a JSON object.
-    Inline(IndexMap<String, serde_json::Value>),
-    /// External attributes identified by their [`SelfAddressingIdentifier`].
-    External(SelfAddressingIdentifier),
-}
-
-impl InlineAttributes {
-    pub fn new() -> Self {
-        InlineAttributes(IndexMap::new())
-    }
-
-    pub fn insert(&mut self, key: String, value: serde_json::Value) {
-        self.0.insert(key, value);
-    }
-}
-
-impl Default for InlineAttributes {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl Attributes {
-    pub fn new_inline(attributes: InlineAttributes) -> Self {
-        Attributes::Inline(attributes.0)
-    }
 }
 
 impl Attestation {
@@ -109,7 +75,7 @@ mod tests {
         version::Encode,
     };
 
-    use crate::{attestation::InlineAttributes, error::Error, Attestation, Attributes};
+    use crate::{error::Error, Attestation, Attributes, attributes::InlineAttributes};
     #[test]
     pub fn test_new_attestation() -> Result<(), Error> {
         let mut data = InlineAttributes::new();
