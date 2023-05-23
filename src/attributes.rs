@@ -1,11 +1,10 @@
 use std::str::FromStr;
 
-use base64::{engine::general_purpose, Engine};
 use indexmap::IndexMap;
 use said::{sad::SAD, version::format::SerializationFormats, SelfAddressingIdentifier};
 use serde::{Deserialize, Serialize};
 
-use crate::error::Error;
+use crate::{error::Error, salt::new_uuid};
 
 #[derive(Serialize, SAD, Default, Debug, Clone, PartialEq, Deserialize)]
 pub struct AttributesBlock {
@@ -20,11 +19,6 @@ pub struct AttributesBlock {
     data: InlineAttributes,
 }
 
-pub fn new_uuid() -> String {
-    let uuid = uuid::Uuid::new_v4();
-    // TODO use cesrox instead of base64
-    general_purpose::STANDARD_NO_PAD.encode(uuid.as_bytes())
-}
 #[derive(Serialize, Default, Debug, Clone, PartialEq, Deserialize)]
 pub struct InlineAttributes(IndexMap<String, serde_json::Value>);
 impl InlineAttributes {

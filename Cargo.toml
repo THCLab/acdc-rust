@@ -17,8 +17,8 @@ rmp-serde = "0.15"
 thiserror = "1.0"
 indexmap = {version = "1.9.3", features = ["serde"]}
 said = { git = "https://github.com/THCLab/cesrox", branch = "macros", features = ["macros"]  }
+cesrox= { git = "https://github.com/THCLab/cesrox", branch = "macros" }
 uuid = {version = "1.3.3", features = ["v4", "fast-rng"]}
-base64 = "0.21.1"
 
 [dev-dependencies]
 tempfile = { version = "3.1" }

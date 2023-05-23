@@ -12,6 +12,7 @@ pub mod attestation;
 pub mod attributes;
 pub mod authored;
 pub mod error;
+pub mod salt;
 
 pub use attestation::Attestation;
 pub use attributes::Attributes;
