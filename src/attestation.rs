@@ -44,23 +44,6 @@ pub struct Attestation {
 }
 
 impl Attestation {
-    /// Creates a new attestation.
-    #[must_use]
-    pub fn new(issuer: &str, schema: String, attr: Attributes) -> Self {
-        let mut acdc = Self {
-            digest: None,
-            registry_identifier: "".to_string(),
-            issuer: issuer.to_string(),
-            schema,
-            attrs: attr,
-            // prov_chain: Vec::new(),
-            // rules: Vec::new(),
-        };
-        // Compute digest and replace `d` field with SAID.
-        acdc.compute_digest();
-        acdc
-    }
-
     pub fn new_public_targeted(
         issuer: &str,
         target_id: &str,
@@ -88,6 +71,41 @@ impl Attestation {
             issuer: issuer.to_string(),
             schema,
             attrs: attr.to_untargeted_public_block(),
+            // prov_chain: Vec::new(),
+            // rules: Vec::new(),
+        };
+        // Compute digest and replace `d` field with SAID.
+        acdc.compute_digest();
+        acdc
+    }
+
+    pub fn new_private_targeted(
+        issuer: &str,
+        target_id: &str,
+        schema: String,
+        attr: InlineAttributes,
+    ) -> Self {
+        let mut acdc = Self {
+            digest: None,
+            registry_identifier: "".to_string(),
+            issuer: issuer.to_string(),
+            schema,
+            attrs: attr.to_targeted_private_block(target_id.to_string()),
+            // prov_chain: Vec::new(),
+            // rules: Vec::new(),
+        };
+        // Compute digest and replace `d` field with SAID.
+        acdc.compute_digest();
+        acdc
+    }
+
+    pub fn new_private_untargeted(issuer: &str, schema: String, attr: InlineAttributes) -> Self {
+        let mut acdc = Self {
+            digest: None,
+            registry_identifier: "".to_string(),
+            issuer: issuer.to_string(),
+            schema,
+            attrs: attr.to_untargeted_private_block(),
             // prov_chain: Vec::new(),
             // rules: Vec::new(),
         };
@@ -166,19 +184,67 @@ mod tests {
     }
 
     #[test]
-    pub fn test_attributes_order() -> Result<(), Error> {
-        let mut data = InlineAttributes::default();
-        data.insert("name".to_string(), "Hella".into());
-        data.insert("species".to_string(), "cat".into());
-        data.insert("health".to_string(), "great".into());
-        let attributes = data.to_untargeted_public_block();
+    pub fn test_new_untargeted_private_attestation() -> Result<(), Error> {
+        let mut attributes = InlineAttributes::default();
+        attributes.insert("greetings".to_string(), "Hello".into());
 
-        let attestation = Attestation::new(
+        let attestation = Attestation::new_private_untargeted(
             "issuer",
             HashFunction::from(HashFunctionCode::Blake3_256)
                 .derive(&[0; 30])
                 .to_string(),
             attributes,
+        );
+
+        let digest = attestation.digest.clone().unwrap();
+        let derivation_data = attestation.derivation_data();
+        assert!(digest.verify_binding(&derivation_data));
+        println!(
+            "{}",
+            String::from_utf8(attestation.encode().unwrap()).unwrap()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_new_targeted_private_attestation() -> Result<(), Error> {
+        let mut attributes = InlineAttributes::default();
+        attributes.insert("greetings".to_string(), "Hello".into());
+
+        let attestation = Attestation::new_private_targeted(
+            "issuer",
+            "target",
+            HashFunction::from(HashFunctionCode::Blake3_256)
+                .derive(&[0; 30])
+                .to_string(),
+            attributes,
+        );
+
+        let digest = attestation.digest.clone().unwrap();
+        let derivation_data = attestation.derivation_data();
+        assert!(digest.verify_binding(&derivation_data));
+        println!(
+            "{}",
+            String::from_utf8(attestation.encode().unwrap()).unwrap()
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    pub fn test_attributes_order() -> Result<(), Error> {
+        let mut data = InlineAttributes::default();
+        data.insert("name".to_string(), "Hella".into());
+        data.insert("species".to_string(), "cat".into());
+        data.insert("health".to_string(), "great".into());
+
+        let attestation = Attestation::new_public_untargeted(
+            "issuer",
+            HashFunction::from(HashFunctionCode::Blake3_256)
+                .derive(&[0; 30])
+                .to_string(),
+            data,
         );
         let encoded = attestation.encode().unwrap();
         let deserialized_attestation: Attestation = serde_json::from_slice(&encoded).unwrap();

@@ -1,5 +1,6 @@
 use std::str::FromStr;
 
+use base64::{engine::general_purpose, Engine};
 use indexmap::IndexMap;
 use said::{sad::SAD, version::format::SerializationFormats, SelfAddressingIdentifier};
 use serde::{Deserialize, Serialize};
@@ -13,16 +14,24 @@ pub struct AttributesBlock {
     said: Option<SelfAddressingIdentifier>,
     #[serde(rename = "i", skip_serializing_if = "Option::is_none")]
     target: Option<String>,
+    #[serde(rename = "u", skip_serializing_if = "Option::is_none")]
+    uuid: Option<String>,
     #[serde(flatten)]
     data: InlineAttributes,
 }
 
+pub fn new_uuid() -> String {
+    let uuid = uuid::Uuid::new_v4();
+    // TODO use cesrox instead of base64
+    general_purpose::STANDARD_NO_PAD.encode(uuid.as_bytes())
+}
 #[derive(Serialize, Default, Debug, Clone, PartialEq, Deserialize)]
 pub struct InlineAttributes(IndexMap<String, serde_json::Value>);
 impl InlineAttributes {
     pub fn to_untargeted_public_block(self) -> Attributes {
         let mut attr = AttributesBlock {
             said: None,
+            uuid: None,
             target: None,
             data: self,
         };
@@ -32,6 +41,7 @@ impl InlineAttributes {
     pub fn to_targeted_public_block(self, target: String) -> Attributes {
         let mut attr = AttributesBlock {
             said: None,
+            uuid: None,
             target: Some(target),
             data: self,
         };
@@ -40,10 +50,24 @@ impl InlineAttributes {
     }
 
     pub fn to_untargeted_private_block(self) -> Attributes {
-        todo!()
+        let mut attr = AttributesBlock {
+            said: None,
+            uuid: Some(new_uuid()),
+            target: None,
+            data: self,
+        };
+        attr.compute_digest();
+        Attributes::Inline(attr)
     }
     pub fn to_targeted_private_block(self, target: String) -> Attributes {
-        todo!()
+        let mut attr = AttributesBlock {
+            said: None,
+            uuid: Some(new_uuid()),
+            target: Some(target),
+            data: self,
+        };
+        attr.compute_digest();
+        Attributes::Inline(attr)
     }
 }
 
@@ -68,7 +92,7 @@ impl FromStr for InlineAttributes {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let attributes: IndexMap<String, serde_json::Value> =
-            serde_json::from_str(&s).map_err(|_e| Error::ParseError)?;
+            serde_json::from_str(s).map_err(|_e| Error::ParseError)?;
         Ok(Self(attributes))
     }
 }
