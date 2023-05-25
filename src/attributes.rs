@@ -16,8 +16,9 @@ pub struct AttributesBlock {
     #[serde(rename = "u", skip_serializing_if = "Option::is_none")]
     uuid: Option<String>,
     #[serde(rename = "a")]
-    data: InlineAttributes,
+    pub data: InlineAttributes,
 }
+
 
 #[derive(Serialize, Default, Debug, Clone, PartialEq, Deserialize)]
 pub struct InlineAttributes(IndexMap<String, serde_json::Value>);
