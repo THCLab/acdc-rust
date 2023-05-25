@@ -15,7 +15,7 @@ pub struct AttributesBlock {
     target: Option<String>,
     #[serde(rename = "u", skip_serializing_if = "Option::is_none")]
     uuid: Option<String>,
-    #[serde(flatten)]
+    #[serde(rename = "a")]
     data: InlineAttributes,
 }
 
