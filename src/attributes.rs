@@ -19,6 +19,11 @@ pub struct AttributesBlock {
     pub data: InlineAttributes,
 }
 
+impl AttributesBlock {
+    pub fn attributes(&self) -> IndexMap<String, serde_json::Value> {
+        self.data.0.clone()
+    }
+}
 
 #[derive(Serialize, Default, Debug, Clone, PartialEq, Deserialize)]
 pub struct InlineAttributes(IndexMap<String, serde_json::Value>);
