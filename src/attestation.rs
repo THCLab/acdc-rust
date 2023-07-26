@@ -106,10 +106,10 @@ impl Attestation {
         acdc
     }
 
-    pub fn new_private_untargeted(issuer: &str, schema: String, attr: InlineAttributes) -> Self {
+    pub fn new_private_untargeted(issuer: &str, registry_identifier: String, schema: String, attr: InlineAttributes) -> Self {
         let mut acdc = Self {
             digest: None,
-            registry_identifier: "".to_string(),
+            registry_identifier,
             issuer: issuer.to_string(),
             schema,
             attrs: attr.to_untargeted_private_block(),
@@ -195,6 +195,7 @@ mod tests {
 
         let attestation = Attestation::new_private_untargeted(
             "issuer",
+            "".to_string(),
             HashFunction::from(HashFunctionCode::Blake3_256)
                 .derive(&[0; 30])
                 .to_string(),
