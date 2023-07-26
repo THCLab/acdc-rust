@@ -47,12 +47,13 @@ impl Attestation {
     pub fn new_public_targeted(
         issuer: &str,
         target_id: &str,
+        registry_identifier: String,
         schema: String,
         attr: InlineAttributes,
     ) -> Self {
         let mut acdc = Self {
             digest: None,
-            registry_identifier: "".to_string(),
+            registry_identifier,
             issuer: issuer.to_string(),
             schema,
             attrs: attr.to_targeted_public_block(target_id.to_string()),
@@ -64,10 +65,15 @@ impl Attestation {
         acdc
     }
 
-    pub fn new_public_untargeted(issuer: &str, schema: String, attr: InlineAttributes) -> Self {
+    pub fn new_public_untargeted(
+        issuer: &str,
+        registry_identifier: String,
+        schema: String,
+        attr: InlineAttributes,
+    ) -> Self {
         let mut acdc = Self {
             digest: None,
-            registry_identifier: "".to_string(),
+            registry_identifier,
             issuer: issuer.to_string(),
             schema,
             attrs: attr.to_untargeted_public_block(),
@@ -82,12 +88,13 @@ impl Attestation {
     pub fn new_private_targeted(
         issuer: &str,
         target_id: &str,
+        registry_identifier: String,
         schema: String,
         attr: InlineAttributes,
     ) -> Self {
         let mut acdc = Self {
             digest: None,
-            registry_identifier: "".to_string(),
+            registry_identifier,
             issuer: issuer.to_string(),
             schema,
             attrs: attr.to_targeted_private_block(target_id.to_string()),
@@ -129,11 +136,7 @@ mod tests {
         version::Encode,
     };
 
-    use crate::{
-        attributes::{AttributesBlock, InlineAttributes},
-        error::Error,
-        Attestation, Attributes,
-    };
+    use crate::{attributes::InlineAttributes, error::Error, Attestation};
     #[test]
     pub fn test_new_targeted_public_attestation() -> Result<(), Error> {
         let mut attributes = InlineAttributes::default();
@@ -142,6 +145,7 @@ mod tests {
         let attestation = Attestation::new_public_targeted(
             "issuer",
             "target",
+            "".to_string(),
             HashFunction::from(HashFunctionCode::Blake3_256)
                 .derive(&[0; 30])
                 .to_string(),
@@ -166,6 +170,7 @@ mod tests {
 
         let attestation = Attestation::new_public_untargeted(
             "issuer",
+            "".to_string(),
             HashFunction::from(HashFunctionCode::Blake3_256)
                 .derive(&[0; 30])
                 .to_string(),
@@ -203,6 +208,8 @@ mod tests {
             "{}",
             String::from_utf8(attestation.encode().unwrap()).unwrap()
         );
+        let parsed: Attestation = serde_json::from_slice(&attestation.encode().unwrap()).unwrap();
+        println!("{}", String::from_utf8(parsed.encode().unwrap()).unwrap());
 
         Ok(())
     }
@@ -215,6 +222,7 @@ mod tests {
         let attestation = Attestation::new_private_targeted(
             "issuer",
             "target",
+            "".to_string(),
             HashFunction::from(HashFunctionCode::Blake3_256)
                 .derive(&[0; 30])
                 .to_string(),
@@ -241,6 +249,7 @@ mod tests {
 
         let attestation = Attestation::new_public_untargeted(
             "issuer",
+            "".to_string(),
             HashFunction::from(HashFunctionCode::Blake3_256)
                 .derive(&[0; 30])
                 .to_string(),
