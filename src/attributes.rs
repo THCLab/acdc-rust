@@ -11,11 +11,11 @@ use crate::{error::Error, salt::new_uuid};
 pub struct AttributesBlock {
     #[said]
     #[serde(rename = "d")]
-    said: Option<SelfAddressingIdentifier>,
+    pub said: Option<SelfAddressingIdentifier>,
     #[serde(rename = "i", skip_serializing_if = "Option::is_none")]
-    target: Option<String>,
+    pub target: Option<String>,
     #[serde(rename = "u", skip_serializing_if = "Option::is_none")]
-    uuid: Option<String>,
+    pub uuid: Option<String>,
     #[serde(rename = "a")]
     pub data: InlineAttributes,
 }
