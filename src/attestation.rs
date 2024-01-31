@@ -2,6 +2,7 @@
 //!
 //! See: [`Attestation`]
 
+use said::derivation::HashFunctionCode;
 use said::version::{format::SerializationFormats, SerializationInfo};
 use said::{sad::SAD, SelfAddressingIdentifier};
 use serde::{Deserialize, Serialize};
@@ -11,7 +12,6 @@ use crate::{Attributes, Authored};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, SAD)]
 #[version(protocol = "ACDC", major = 1, minor = 0)]
-#[said(code = "E", format = "JSON")]
 pub struct Attestation {
     /// Digest of attestation
     #[said]
@@ -61,7 +61,7 @@ impl Attestation {
             // rules: Vec::new(),
         };
         // Compute digest and replace `d` field with SAID.
-        acdc.compute_digest();
+        acdc.compute_digest(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
         acdc
     }
 
@@ -81,7 +81,7 @@ impl Attestation {
             // rules: Vec::new(),
         };
         // Compute digest and replace `d` field with SAID.
-        acdc.compute_digest();
+        acdc.compute_digest(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
         acdc
     }
 
@@ -102,7 +102,7 @@ impl Attestation {
             // rules: Vec::new(),
         };
         // Compute digest and replace `d` field with SAID.
-        acdc.compute_digest();
+        acdc.compute_digest(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
         acdc
     }
 
@@ -117,7 +117,7 @@ impl Attestation {
             // rules: Vec::new(),
         };
         // Compute digest and replace `d` field with SAID.
-        acdc.compute_digest();
+        acdc.compute_digest(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
         acdc
     }
 }
@@ -132,7 +132,7 @@ impl Authored for Attestation {
 mod tests {
     use said::{
         derivation::{HashFunction, HashFunctionCode},
-        sad::SAD,
+        sad::{SerializationFormats, SAD},
         version::Encode,
     };
 
@@ -153,11 +153,11 @@ mod tests {
         );
 
         let digest = attestation.digest.clone().unwrap();
-        let derivation_data = attestation.derivation_data();
+        let derivation_data = attestation.derivation_data(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
         assert!(digest.verify_binding(&derivation_data));
         println!(
             "{}",
-            String::from_utf8(attestation.encode().unwrap()).unwrap()
+            String::from_utf8(attestation.encode(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON).unwrap()).unwrap()
         );
 
         Ok(())
@@ -178,11 +178,11 @@ mod tests {
         );
 
         let digest = attestation.digest.clone().unwrap();
-        let derivation_data = attestation.derivation_data();
+        let derivation_data = attestation.derivation_data(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
         assert!(digest.verify_binding(&derivation_data));
         println!(
             "{}",
-            String::from_utf8(attestation.encode().unwrap()).unwrap()
+            String::from_utf8(attestation.encode(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON).unwrap()).unwrap()
         );
 
         Ok(())
@@ -203,14 +203,14 @@ mod tests {
         );
 
         let digest = attestation.digest.clone().unwrap();
-        let derivation_data = attestation.derivation_data();
+        let derivation_data = attestation.derivation_data(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
         assert!(digest.verify_binding(&derivation_data));
         println!(
             "{}",
-            String::from_utf8(attestation.encode().unwrap()).unwrap()
+            String::from_utf8(attestation.encode(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON).unwrap()).unwrap()
         );
-        let parsed: Attestation = serde_json::from_slice(&attestation.encode().unwrap()).unwrap();
-        println!("{}", String::from_utf8(parsed.encode().unwrap()).unwrap());
+        let parsed: Attestation = serde_json::from_slice(&attestation.encode(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON).unwrap()).unwrap();
+        println!("{}", String::from_utf8(parsed.encode(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON).unwrap()).unwrap());
 
         Ok(())
     }
@@ -231,11 +231,11 @@ mod tests {
         );
 
         let digest = attestation.digest.clone().unwrap();
-        let derivation_data = attestation.derivation_data();
+        let derivation_data = attestation.derivation_data(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
         assert!(digest.verify_binding(&derivation_data));
         println!(
             "{}",
-            String::from_utf8(attestation.encode().unwrap()).unwrap()
+            String::from_utf8(attestation.encode(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON).unwrap()).unwrap()
         );
 
         Ok(())
@@ -256,11 +256,11 @@ mod tests {
                 .to_string(),
             data,
         );
-        let encoded = attestation.encode().unwrap();
+        let encoded = attestation.encode(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON).unwrap();
         let deserialized_attestation: Attestation = serde_json::from_slice(&encoded).unwrap();
         assert_eq!(
-            &attestation.encode().unwrap(),
-            &deserialized_attestation.encode().unwrap()
+            &attestation.encode(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON).unwrap(),
+            &deserialized_attestation.encode(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON).unwrap()
         );
 
         Ok(())

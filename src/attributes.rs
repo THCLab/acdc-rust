@@ -1,10 +1,11 @@
 use std::str::FromStr;
 
 use indexmap::IndexMap;
-use said::{sad::SAD, version::format::SerializationFormats, SelfAddressingIdentifier};
+use said::{derivation::HashFunctionCode, sad::SAD, version::format::SerializationFormats, SelfAddressingIdentifier};
 use serde::{Deserialize, Serialize};
 
 use crate::{error::Error, salt::new_uuid};
+
 
 #[derive(Serialize, SAD, Default, Debug, Clone, PartialEq, Deserialize)]
 pub struct AttributesBlock {
@@ -35,7 +36,7 @@ impl InlineAttributes {
             target: None,
             data: self,
         };
-        attr.compute_digest();
+        attr.compute_digest(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
         Attributes::Inline(attr)
     }
     pub fn to_targeted_public_block(self, target: String) -> Attributes {
@@ -45,7 +46,7 @@ impl InlineAttributes {
             target: Some(target),
             data: self,
         };
-        attr.compute_digest();
+        attr.compute_digest(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
         Attributes::Inline(attr)
     }
 
@@ -56,7 +57,7 @@ impl InlineAttributes {
             target: None,
             data: self,
         };
-        attr.compute_digest();
+        attr.compute_digest(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
         Attributes::Inline(attr)
     }
     pub fn to_targeted_private_block(self, target: String) -> Attributes {
@@ -66,7 +67,7 @@ impl InlineAttributes {
             target: Some(target),
             data: self,
         };
-        attr.compute_digest();
+        attr.compute_digest(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
         Attributes::Inline(attr)
     }
 }
