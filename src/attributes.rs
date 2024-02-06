@@ -1,11 +1,13 @@
 use std::str::FromStr;
 
 use indexmap::IndexMap;
-use said::{derivation::HashFunctionCode, sad::SAD, version::format::SerializationFormats, SelfAddressingIdentifier};
+use said::{
+    derivation::HashFunctionCode, sad::SAD, version::format::SerializationFormats,
+    SelfAddressingIdentifier,
+};
 use serde::{Deserialize, Serialize};
 
 use crate::{error::Error, salt::new_uuid};
-
 
 #[derive(Serialize, SAD, Default, Debug, Clone, PartialEq, Deserialize)]
 pub struct AttributesBlock {

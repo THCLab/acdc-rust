@@ -7,3 +7,7 @@ ACDC utilize the same concept of containers that we all know from the global sup
 ## Development
 
 * Run `cargo build`.
+
+## Usage
+
+For usage examples checkout [`tests`](tests) folder.
