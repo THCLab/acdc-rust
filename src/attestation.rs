@@ -50,6 +50,8 @@ impl Attestation {
         registry_identifier: String,
         schema: String,
         attr: InlineAttributes,
+        format: &SerializationFormats,
+        hash_function: &HashFunctionCode
     ) -> Self {
         let mut acdc = Self {
             digest: None,
@@ -61,7 +63,7 @@ impl Attestation {
             // rules: Vec::new(),
         };
         // Compute digest and replace `d` field with SAID.
-        acdc.compute_digest(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
+        acdc.compute_digest(hash_function, format);
         acdc
     }
 
@@ -70,6 +72,8 @@ impl Attestation {
         registry_identifier: String,
         schema: String,
         attr: InlineAttributes,
+        format: &SerializationFormats,
+        hash_function: &HashFunctionCode
     ) -> Self {
         let mut acdc = Self {
             digest: None,
@@ -81,7 +85,7 @@ impl Attestation {
             // rules: Vec::new(),
         };
         // Compute digest and replace `d` field with SAID.
-        acdc.compute_digest(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
+        acdc.compute_digest(hash_function, format);
         acdc
     }
 
@@ -91,6 +95,8 @@ impl Attestation {
         registry_identifier: String,
         schema: String,
         attr: InlineAttributes,
+        format: &SerializationFormats,
+        hash_function: &HashFunctionCode
     ) -> Self {
         let mut acdc = Self {
             digest: None,
@@ -102,7 +108,7 @@ impl Attestation {
             // rules: Vec::new(),
         };
         // Compute digest and replace `d` field with SAID.
-        acdc.compute_digest(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
+        acdc.compute_digest(hash_function, format);
         acdc
     }
 
@@ -111,6 +117,8 @@ impl Attestation {
         registry_identifier: String,
         schema: String,
         attr: InlineAttributes,
+        format: &SerializationFormats,
+        hash_function: &HashFunctionCode
     ) -> Self {
         let mut acdc = Self {
             digest: None,
@@ -122,7 +130,7 @@ impl Attestation {
             // rules: Vec::new(),
         };
         // Compute digest and replace `d` field with SAID.
-        acdc.compute_digest(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON);
+        acdc.compute_digest(hash_function, format);
         acdc
     }
 }
@@ -157,6 +165,8 @@ mod tests {
                 .derive(&[0; 30])
                 .to_string(),
             data,
+            &SerializationFormats::JSON,
+            &HashFunctionCode::Blake3_256,
         );
         let encoded = attestation
             .encode(&HashFunctionCode::Blake3_256, &SerializationFormats::JSON)

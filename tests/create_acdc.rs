@@ -18,6 +18,8 @@ pub fn test_new_targeted_public_attestation() -> Result<(), Error> {
             .derive(&[0; 30])
             .to_string(),
         attributes,
+        &SerializationFormats::JSON,
+        &HashFunctionCode::Blake3_256,
     );
 
     let digest = attestation.digest.clone().unwrap();
@@ -49,6 +51,8 @@ pub fn test_new_untargeted_public_attestation() -> Result<(), Error> {
             .derive(&[0; 30])
             .to_string(),
         attributes,
+        &SerializationFormats::JSON,
+        &HashFunctionCode::Blake3_256,
     );
 
     let digest = attestation.digest.clone().unwrap();
@@ -80,6 +84,8 @@ pub fn test_new_untargeted_private_attestation() -> Result<(), Error> {
             .derive(&[0; 30])
             .to_string(),
         attributes,
+        &SerializationFormats::JSON,
+        &HashFunctionCode::Blake3_256,
     );
 
     let digest = attestation.digest.clone().unwrap();
@@ -127,6 +133,8 @@ pub fn test_new_targeted_private_attestation() -> Result<(), Error> {
             .derive(&[0; 30])
             .to_string(),
         attributes,
+        &SerializationFormats::JSON,
+        &HashFunctionCode::Blake3_256,
     );
 
     let digest = attestation.digest.clone().unwrap();
