@@ -1,4 +1,4 @@
-use cesrox::primitives::{codes::serial_number::SerialNumberCode, CesrPrimitive};
+use cesrox::primitives::{codes::rand_128::Rand128Code, CesrPrimitive};
 use uuid::Uuid;
 
 pub struct Salt {
@@ -17,6 +17,6 @@ impl CesrPrimitive for Salt {
     }
 
     fn derivation_code(&self) -> cesrox::primitives::codes::PrimitiveCode {
-        cesrox::primitives::codes::PrimitiveCode::SerialNumber(SerialNumberCode)
+        cesrox::primitives::codes::PrimitiveCode::SerialNumber(Rand128Code)
     }
 }

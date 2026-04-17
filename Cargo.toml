@@ -17,8 +17,8 @@ serde_cbor = "0.11.2"
 rmp-serde = "1.3"
 thiserror = "1.0"
 indexmap = { version = "1.9.3", features = ["serde"]}
-said = { version = "0.4.3", features = ["macros"]  }
-cesrox = { version = "0.1.8" }
+said = { version = "0.5.3-beta.1", features = ["macros"]  }
+cesrox = { version = "2.0.0-beta.5" }
 uuid = {version = "1.3.3", features = ["v4", "fast-rng"]}
 
 [dev-dependencies]
